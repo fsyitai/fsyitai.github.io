@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>乙太智枕定制 · 智能枕芯计算器</title>
+<style>
+/* ============================================================
+   设计变量
+   ============================================================ */
+:root {
+  --bg-deep: #060d17;
+  --bg-1: #0b1a2b;
+  --bg-2: #12303f;
+  --glass: rgba(255, 255, 255, 0.06);
+  --glass-strong: rgba(255, 255, 255, 0.11);
+  --glass-border: rgba(255, 255, 255, 0.12);
+  --text-1: #f4f8fb;
+  --text-2: #a9bcc8;
+  --text-3: rgba(169, 188, 200, 0.62);
+  --accent: #5ad1f4;
+  --accent-2: #8f7bff;
+  --accent-grad: linear-gradient(135deg, #5ad1f4, #8f7bff);
+  --accent-glow: rgba(90, 209, 244, 0.35);
+  --thin: #4ecdc4;      /* 偏瘦 */
+  --ok: #55efc4;        /* 正常 */
+  --warn: #f9ca24;      /* 超重 */
+  --danger: #ff6b6b;    /* 肥胖 */
+  --r-lg: 28px;
+  --r-md: 16px;
+  --r-sm: 12px;
+  --ease: cubic-bezier(0.22, 0.8, 0.24, 1);
+  --shadow: 0 24px 70px rgba(2, 10, 18, 0.6);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+[hidden] { display: none !important; }
+
+html, body { min-height: 100%; }
+
+body {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 28px 16px;
+  overflow-x: hidden;
+  color: var(--text-2);
+  line-height: 1.6;
+  font-family: "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+  background:
+    radial-gradient(1200px 820px at 82% -10%, rgba(90, 209, 244, 0.16), transparent 62%),
+    radial-gradient(1000px 720px at -8% 112%, rgba(143, 123, 255, 0.16), transparent 62%),
+    linear-gradient(160deg, var(--bg-deep) 0%, var(--bg-1) 45%, var(--bg-2) 100%);
+}
+
+/* ============================================================
+   动态背景：极光光斑 + 星空
+   ============================================================ */
+.orb {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: 0.5;
+  z-index: 0;
+  pointer-events: none;
+}
+.orb-1 {
+  width: 440px; height: 440px;
+  top: -140px; left: -100px;
+  background: radial-gradient(circle, rgba(90, 209, 244, 0.55), transparent 70%);
+  animation: orbA 16s ease-in-out infinite alternate;
+}
+.orb-2 {
+  width: 480px; height: 480px;
+  bottom: -160px; right: -120px;
+  background: radial-gradient(circle, rgba(143, 123, 255, 0.52), transparent 70%);
+  animation: orbB 20s ease-in-out infinite alternate;
+}
+.orb-3 {
+  width: 300px; height: 300px;
+  top: 45%; left: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.06), transparent 70%);
+  animation: orbA 24s ease-in-out infinite alternate-reverse;
+}
+@keyframes orbA { to { transform: translate(60px, 46px) scale(1.16); } }
+@keyframes orbB { to { transform: translate(-54px, -42px) scale(1.1); } }
+
+.stars {
+  position: fixed;
+  inset: -10%;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.6;
+  background-image:
+    radial-gradient(1.5px 1.5px at 12% 22%, rgba(255,255,255,.55), transparent 100%),
+    radial-gradient(1px 1px at 27% 64%, rgba(255,255,255,.4), transparent 100%),
+    radial-gradient(1.5px 1.5px at 43% 12%, rgba(255,255,255,.35), transparent 100%),
+    radial-gradient(1px 1px at 58% 78%, rgba(255,255,255,.5), transparent 100%),
+    radial-gradient(2px 2px at 71% 35%, rgba(255,255,255,.3), transparent 100%),
+    radial-gradient(1px 1px at 84% 58%, rgba(255,255,255,.45), transparent 100%),
+    radial-gradient(1.5px 1.5px at 33% 88%, rgba(255,255,255,.35), transparent 100%),
+    radial-gradient(1px 1px at 66% 8%, rgba(255,255,255,.4), transparent 100%);
+  background-size: 420px 420px;
+  animation: starDrift 90s linear infinite;
+}
+@keyframes starDrift { from { background-position: 0 0; } to { background-position: 420px 420px; } }
+
+/* ============================================================
+   卡片容器（渐变描边 + 流光）
+   ============================================================ */
+.card {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 520px;
+  padding: 40px 38px 34px;
+  border-radius: var(--r-lg);
+  border: 1px solid transparent;
+  background:
+    linear-gradient(168deg, rgba(22, 45, 62, 0.74), rgba(10, 24, 36, 0.64)) padding-box,
+    linear-gradient(135deg, rgba(90, 209, 244, 0.55), rgba(255, 255, 255, 0.06) 30%, rgba(255, 255, 255, 0.05) 62%, rgba(143, 123, 255, 0.55)) border-box;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  overflow: hidden;
+  animation: riseIn 0.7s var(--ease) both;
+}
+.card > * { position: relative; z-index: 1; }
+
+/* 顶部流光扫过 */
+.card::after {
+  content: "";
+  position: absolute;
+  top: 0; left: -80%;
+  width: 55%; height: 100%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.055), transparent);
+  transform: skewX(-20deg);
+  animation: sheen 7s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes sheen {
+  0%, 58% { left: -80%; }
+  100% { left: 135%; }
+}
+
+@keyframes riseIn {
+  from { opacity: 0; transform: translateY(26px) scale(0.985); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ============================================================
+   标题区
+   ============================================================ */
+.brand { display: flex; justify-content: center; margin-bottom: 14px; }
+
+.brand-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 18px;
+  border-radius: 999px;
+  background: var(--accent-grad);
+  color: #08202c;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  box-shadow: 0 8px 26px var(--accent-glow);
+}
+.brand-badge svg { width: 16px; height: 16px; }
+
+.title {
+  font-size: 30px;
+  font-weight: 800;
+  text-align: center;
+  color: var(--text-1);
+  letter-spacing: 1px;
+  background: linear-gradient(120deg, #ffffff, #bfe9ff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.subtitle {
+  text-align: center;
+  font-size: 14px;
+  margin: 8px 0 32px;
+  color: var(--text-2);
+  letter-spacing: 0.5px;
+}
+
+/* ============================================================
+   输入组
+   ============================================================ */
+.input-group { margin-bottom: 26px; }
+
+.label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-1);
+  letter-spacing: 0.5px;
+}
+.label svg { width: 18px; height: 18px; color: var(--accent); flex-shrink: 0; }
+
+.unit-tag {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-2);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--glass-border);
+  border-radius: 6px;
+  padding: 2px 10px;
+  letter-spacing: 1px;
+}
+
+/* 滑杆 */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 8px;
+  border-radius: 6px;
+  outline: none;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.1);
+  transition: box-shadow 0.3s var(--ease);
+}
+input[type="range"]:focus-visible {
+  box-shadow: 0 0 0 4px rgba(90, 209, 244, 0.18);
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  border: 3px solid #fff;
+  background: var(--accent-grad);
+  box-shadow: 0 0 0 4px rgba(90, 209, 244, 0.2), 0 6px 18px var(--accent-glow);
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+input[type="range"]::-webkit-slider-thumb:hover  { transform: scale(1.18); }
+input[type="range"]::-webkit-slider-thumb:active {
+  transform: scale(1.05);
+  box-shadow: 0 0 0 9px rgba(90, 209, 244, 0.16), 0 6px 20px var(--accent-glow);
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  border: 3px solid #fff;
+  background: var(--accent-grad);
+  box-shadow: 0 0 0 4px rgba(90, 209, 244, 0.2), 0 6px 18px var(--accent-glow);
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+input[type="range"]::-moz-range-thumb:hover { transform: scale(1.18); }
+input[type="range"]::-moz-range-track { height: 8px; border-radius: 6px; background: transparent; }
+
+/* 数值显示（可点击直输） */
+.value-display {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 12px;
+  font-size: 34px;
+  font-weight: 800;
+  color: var(--text-1);
+  line-height: 1;
+  min-height: 42px;
+}
+.value-display .num { font-variant-numeric: tabular-nums; }
+.value-display .unit { font-size: 17px; font-weight: 400; color: var(--text-2); }
+
+.value-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 2px;
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: transform 0.2s var(--ease);
+}
+.value-chip:hover { transform: translateY(-1px); }
+.value-chip .edit-ico {
+  width: 15px; height: 15px;
+  color: var(--accent);
+  opacity: 0;
+  transform: translateX(-5px);
+  transition: all 0.25s var(--ease);
+}
+.value-chip:hover .edit-ico, .value-chip:focus-visible .edit-ico { opacity: 0.9; transform: translateX(0); }
+
+.stealth {
+  width: 112px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(90, 209, 244, 0.45);
+  color: var(--text-1);
+  font: inherit;
+  font-size: 26px;
+  font-weight: 800;
+  text-align: center;
+  outline: none;
+  font-variant-numeric: tabular-nums;
+}
+.stealth:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(90, 209, 244, 0.18); }
+.stealth::-webkit-outer-spin-button, .stealth::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.stealth { -moz-appearance: textfield; appearance: textfield; }
+
+.range-hint {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-3);
+}
+
+/* ============================================================
+   结果区域
+   ============================================================ */
+.result-box {
+  margin-top: 26px;
+  padding: 26px 22px;
+  border-radius: var(--r-md);
+  background: rgba(4, 14, 22, 0.45);
+  border: 1px solid var(--glass-border);
+  text-align: center;
+  transition: border-color 0.5s var(--ease), box-shadow 0.5s var(--ease);
+}
+
+/* 按体型着色的结果光环 */
+.result-box.theme-thin {
+  border-color: rgba(78, 205, 196, 0.5);
+  box-shadow: 0 0 44px rgba(78, 205, 196, 0.16), 0 18px 50px rgba(2, 12, 20, 0.45);
+}
+.result-box.theme-normal {
+  border-color: rgba(85, 239, 196, 0.5);
+  box-shadow: 0 0 44px rgba(85, 239, 196, 0.16), 0 18px 50px rgba(2, 12, 20, 0.45);
+}
+.result-box.theme-overweight {
+  border-color: rgba(249, 202, 36, 0.5);
+  box-shadow: 0 0 44px rgba(249, 202, 36, 0.16), 0 18px 50px rgba(2, 12, 20, 0.45);
+}
+.result-box.theme-obese {
+  border-color: rgba(255, 107, 107, 0.5);
+  box-shadow: 0 0 44px rgba(255, 107, 107, 0.16), 0 18px 50px rgba(2, 12, 20, 0.45);
+}
+
+/* 款式徽章 */
+.pillow-model {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 16px;
+  padding: 9px 20px;
+  border-radius: 999px;
+  background: rgba(90, 209, 244, 0.14);
+  border: 1px solid rgba(90, 209, 244, 0.35);
+  color: var(--accent);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+.pillow-model svg { width: 16px; height: 16px; }
+.pillow-model.pop { animation: pop 0.45s var(--ease); }
+@keyframes pop {
+  0% { transform: scale(0.82); }
+  55% { transform: scale(1.07); }
+  100% { transform: scale(1); }
+}
+
+/* BMI */
+.bmi-value {
+  font-size: 54px;
+  font-weight: 800;
+  color: var(--text-1);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.bmi-unit { font-size: 20px; font-weight: 400; color: var(--text-2); margin-left: 6px; }
+
+.bmi-label {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 4px 16px;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+.bmi-label.underweight { color: var(--thin);   background: rgba(78, 205, 196, 0.12); }
+.bmi-label.normal      { color: var(--ok);     background: rgba(85, 239, 196, 0.12); }
+.bmi-label.overweight  { color: var(--warn);   background: rgba(249, 202, 36, 0.12); }
+.bmi-label.obese       { color: var(--danger); background: rgba(255, 107, 107, 0.12); }
+
+/* BMI 区间仪表条 */
+.gauge { margin-top: 16px; }
+.gauge-track {
+  position: relative;
+  height: 12px;
+  border-radius: 999px;
+  display: flex;
+  overflow: visible;
+}
+.zone {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: rgba(255, 255, 255, 0.92);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+.zone.thin { flex-basis: 25%;    background: linear-gradient(90deg, rgba(78, 205, 196, 0.45), rgba(78, 205, 196, 0.9)); }
+.zone.normal { flex-basis: 30.56%; background: linear-gradient(90deg, rgba(85, 239, 196, 0.45), rgba(85, 239, 196, 0.9)); }
+.zone.overweight { flex-basis: 22.22%; background: linear-gradient(90deg, rgba(249, 202, 36, 0.45), rgba(249, 202, 36, 0.9)); }
+.zone.obese { flex-basis: 22.22%; background: linear-gradient(90deg, rgba(255, 107, 107, 0.45), rgba(255, 107, 107, 0.9)); }
+
+.gauge-marker {
+  position: absolute;
+  top: -4px;
+  left: 0;
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 3px solid var(--accent);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5), 0 0 0 4px rgba(90, 209, 244, 0.18);
+  transform: translateX(-50%);
+  transition: left 0.55s var(--ease);
+}
+.gauge-scale {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 7px;
+  font-size: 10px;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 位置数据网格 */
+.position-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-top: 22px;
+}
+
+.position-card {
+  position: relative;
+  overflow: hidden;
+  padding: 22px 14px;
+  border-radius: var(--r-md);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  transition: all 0.35s ease;
+}
+.position-card:hover { transform: translateY(-3px); background: rgba(255, 255, 255, 0.075); }
+.position-card::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: transparent;
+  transition: background 0.35s ease;
+}
+.position-card .position-icon {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 8px;
+  color: var(--text-2);
+  transition: color 0.35s ease;
+}
+.position-card .position-icon svg { width: 22px; height: 22px; }
+.position-title { font-size: 13px; color: var(--text-2); margin-bottom: 8px; }
+.position-value {
+  font-size: 40px;
+  font-weight: 800;
+  color: var(--text-1);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.position-unit { font-size: 14px; color: var(--text-2); margin-left: 2px; }
+
+.card-underweight { border-color: rgba(78, 205, 196, 0.4); background: rgba(78, 205, 196, 0.08); }
+.card-underweight::after { background: var(--thin); }
+.card-underweight .position-icon { color: var(--thin); }
+
+.card-normal { border-color: rgba(85, 239, 196, 0.4); background: rgba(85, 239, 196, 0.08); }
+.card-normal::after { background: var(--ok); }
+.card-normal .position-icon { color: var(--ok); }
+
+.card-overweight { border-color: rgba(249, 202, 36, 0.4); background: rgba(249, 202, 36, 0.08); }
+.card-overweight::after { background: var(--warn); }
+.card-overweight .position-icon { color: var(--warn); }
+
+.card-obese { border-color: rgba(255, 107, 107, 0.4); background: rgba(255, 107, 107, 0.08); }
+.card-obese::after { background: var(--danger); }
+.card-obese .position-icon { color: var(--danger); }
+
+/* 建议 */
+.pillow-advice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 18px;
+  padding: 14px 16px;
+  border-radius: var(--r-sm);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px dashed rgba(255, 255, 255, 0.14);
+  text-align: left;
+  font-size: 14px;
+  color: var(--text-2);
+  line-height: 1.7;
+}
+.pillow-advice svg {
+  width: 18px; height: 18px;
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--accent);
+}
+
+/* ============================================================
+   参考表
+   ============================================================ */
+.reference {
+  margin-top: 20px;
+  padding: 18px 20px;
+  border-radius: var(--r-md);
+  background: rgba(4, 14, 22, 0.3);
+  border: 1px solid var(--glass-border);
+}
+.reference-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-1);
+  margin-bottom: 8px;
+}
+.reference-title svg { width: 16px; height: 16px; color: var(--accent); }
+.reference-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 9px 0;
+  font-size: 13px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+.reference-row:last-child { border-bottom: none; }
+.reference-label { color: var(--text-2); }
+.reference-value { font-weight: 600; color: var(--text-1); }
+.reference-value.accent { color: var(--accent); }
+
+/* ============================================================
+   操作栏 & Toast
+   ============================================================ */
+.actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 18px;
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 13px 10px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--text-1);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 0.25s var(--ease);
+}
+.btn svg { width: 17px; height: 17px; }
+.btn:hover { background: rgba(255, 255, 255, 0.12); transform: translateY(-2px); }
+.btn:active { transform: translateY(0) scale(0.98); }
+.btn-primary {
+  border-color: transparent;
+  background: var(--accent-grad);
+  color: #08202c;
+  box-shadow: 0 8px 22px var(--accent-glow);
+}
+.btn-primary:hover { background: var(--accent-grad); filter: brightness(1.08); }
+.btn:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(90, 209, 244, 0.35); }
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 30px;
+  z-index: 20;
+  transform: translate(-50%, 20px);
+  padding: 11px 22px;
+  border-radius: 999px;
+  background: rgba(6, 20, 30, 0.92);
+  border: 1px solid rgba(90, 209, 244, 0.4);
+  color: var(--text-1);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  box-shadow: 0 12px 34px rgba(2, 12, 20, 0.5);
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.35s var(--ease);
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+/* ============================================================
+   响应式
+   ============================================================ */
+@media (max-width: 480px) {
+  .card { padding: 28px 22px; }
+  .title { font-size: 24px; }
+  .bmi-value { font-size: 44px; }
+  .position-value { font-size: 32px; }
+  .position-grid { gap: 10px; }
+  .position-card { padding: 18px 10px; }
+}
+
+/* 无障碍：减少动态效果 */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+</style>
+</head>
+<body>
+
+<div class="orb orb-1" aria-hidden="true"></div>
+<div class="orb orb-2" aria-hidden="true"></div>
+<div class="orb orb-3" aria-hidden="true"></div>
+<div class="stars" aria-hidden="true"></div>
+
+<div class="card">
+
+  <!-- 品牌徽标 -->
+  <div class="brand">
+    <span class="brand-badge">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2.5l1.8 5.2 5.2 1.8-5.2 1.8L12 16.5l-1.8-5.2L5 9.5l5.2-1.8z"/>
+        <path d="M19 15l.9 2.6L22.5 18.5l-2.6.9L19 22l-.9-2.6-2.6-.9 2.6-.9z"/>
+      </svg>
+      乙太 · 智眠
+    </span>
+  </div>
+
+  <h1 class="title">智枕定制</h1>
+  <p class="subtitle">基于身高体重，测算最适合您的枕芯参数</p>
+
+  <!-- 身高 -->
+  <div class="input-group">
+    <label class="label" for="height">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+        <circle cx="9" cy="7" r="4"/>
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+      </svg>
+      身高
+      <span class="unit-tag">cm</span>
+    </label>
+    <input type="range" id="height" min="150" max="190" value="170" aria-label="身高（厘米）" oninput="onSliderHeight()">
+    <div class="range-hint"><span>150</span><span>190</span></div>
+    <div class="value-display">
+      <button type="button" class="value-chip" id="heightChip" title="点击输入精确数值" aria-label="点击输入身高">
+        <span class="num" id="heightVal">170</span>
+        <svg class="edit-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+        </svg>
+      </button>
+      <input type="number" class="stealth" id="heightInput" min="150" max="190" value="170" hidden aria-label="输入身高数值">
+      <span class="unit">cm</span>
+    </div>
+  </div>
+
+  <!-- 体重 -->
+  <div class="input-group">
+    <label class="label" for="weight">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M6 16.5A3.5 3.5 0 0 0 9.5 20h3A3.5 3.5 0 0 0 16 16.5V12H6v4.5z"/>
+        <path d="M6 12a6 6 0 1 1 12 0"/>
+        <path d="M9.5 8l.5-1h4l.5 1"/>
+      </svg>
+      体重
+      <span class="unit-tag">kg</span>
+    </label>
+    <input type="range" id="weight" min="38" max="108" value="65" aria-label="体重（公斤）" oninput="onSliderWeight()">
+    <div class="range-hint"><span>38</span><span>108</span></div>
+    <div class="value-display">
+      <button type="button" class="value-chip" id="weightChip" title="点击输入精确数值" aria-label="点击输入体重">
+        <span class="num" id="weightVal">65</span>
+        <svg class="edit-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+        </svg>
+      </button>
+      <input type="number" class="stealth" id="weightInput" min="38" max="108" value="65" hidden aria-label="输入体重数值">
+      <span class="unit">kg</span>
+    </div>
+  </div>
+
+  <!-- 结果 -->
+  <div class="result-box show theme-normal" id="resultBox">
+
+    <!-- 款式 -->
+    <div class="pillow-model" id="pillowModel">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M18 6H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2z"/>
+        <path d="M6 12h12"/>
+      </svg>
+      <span id="pillowModelText">B款（165-175cm）</span>
+    </div>
+
+    <!-- BMI -->
+    <div class="bmi-value"><span id="bmiValue">22.5</span><span class="bmi-unit">BMI</span></div>
+    <div class="bmi-label normal" id="bmiLabel">正常范围</div>
+
+    <!-- BMI 区间仪表条 -->
+    <div class="gauge" aria-hidden="true">
+      <div class="gauge-track">
+        <span class="zone thin">偏瘦</span>
+        <span class="zone normal">正常</span>
+        <span class="zone overweight">超重</span>
+        <span class="zone obese">肥胖</span>
+        <div class="gauge-marker" id="bmiMarker"></div>
+      </div>
+      <div class="gauge-scale"><span>14</span><span>18.5</span><span>24</span><span>28</span><span>32</span></div>
+    </div>
+
+    <!-- 位置数据 -->
+    <div class="position-grid">
+      <div class="position-card card-normal" id="neckCard">
+        <div class="position-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2a4 4 0 0 0-4 4c0 1.1.45 2.1 1.17 2.83A4 4 0 0 0 8 11v1h8v-1a4 4 0 0 0-1.17-2.17A4 4 0 0 0 16 6a4 4 0 0 0-4-4z"/>
+            <path d="M8 15v4a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-4"/>
+          </svg>
+        </div>
+        <div class="position-title">颈椎支撑位置</div>
+        <div class="position-value"><span id="neckPos">3</span><span class="position-unit">mm</span></div>
+      </div>
+      <div class="position-card card-normal" id="headCard">
+        <div class="position-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="9"/>
+            <path d="M3 12h18"/>
+            <path d="M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18z"/>
+          </svg>
+        </div>
+        <div class="position-title">头部下沉位置</div>
+        <div class="position-value"><span id="headPos">3</span><span class="position-unit">mm</span></div>
+      </div>
+    </div>
+
+    <!-- 建议 -->
+    <div class="pillow-advice" id="pillowAdvice">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+      </svg>
+      <span id="pillowAdviceText">该参数基于您的体型数据粗略计算，能有效支撑颈椎曲度。</span>
+    </div>
+  </div>
+
+  <!-- 款式参考 -->
+  <div class="reference">
+    <div class="reference-title">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="4" width="18" height="18" rx="2"/>
+        <line x1="16" y1="2" x2="16" y2="6"/>
+        <line x1="8" y1="2" x2="8" y2="6"/>
+        <line x1="3" y1="10" x2="21" y2="10"/>
+      </svg>
+      款式参考表
+    </div>
+    <div class="reference-row"><span class="reference-label">A款</span><span class="reference-value accent">150 - 164 cm</span></div>
+    <div class="reference-row"><span class="reference-label">B款</span><span class="reference-value accent">165 - 175 cm</span></div>
+    <div class="reference-row"><span class="reference-label">C款</span><span class="reference-value accent">176 - 190 cm</span></div>
+  </div>
+
+  <!-- 操作栏 -->
+  <div class="actions">
+    <button type="button" class="btn btn-primary" id="copyBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="9" y="9" width="13" height="13" rx="2"/>
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+      </svg>
+      复制结果
+    </button>
+    <button type="button" class="btn" id="resetBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 12a9 9 0 1 0 3-6.7L3 8"/>
+        <path d="M3 3v5h5"/>
+      </svg>
+      重置
+    </button>
+  </div>
+
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast">已复制到剪贴板</div>
+
+<script>
+// ============================================================
+// 完整数据表：身高 -> { model, w:[偏瘦,正常,超重,肥胖], n:[颈椎位置], h:[头部位置] }
+// ============================================================
+const pillowData = {
+  150:{model:'A款',w:[16.9,22.2,25.8,30.2],n:[1,1,2,3],h:[1,1,2,3]},
+  151:{model:'A款',w:[17.1,21.9,25.9,29.8],n:[1,1,2,3],h:[1,1,2,3]},
+  152:{model:'A款',w:[16.9,22.1,26.0,29.9],n:[1,1,2,3],h:[1,2,3,4]},
+  153:{model:'A款',w:[17.1,21.8,26.1,29.9],n:[2,3,4,5],h:[1,2,3,4]},
+  154:{model:'A款',w:[16.9,21.9,26.1,29.9],n:[2,3,4,5],h:[2,3,4,5]},
+  155:{model:'A款',w:[17.1,22.1,25.8,30.0],n:[2,3,4,5],h:[2,3,4,5]},
+  156:{model:'A款',w:[16.8,22.2,25.9,30.0],n:[4,5,6,7],h:[3,4,5,6]},
+  157:{model:'A款',w:[17.0,21.9,26.0,30.0],n:[4,5,6,7],h:[3,4,5,6]},
+  158:{model:'A款',w:[16.8,22.0,26.0,30.0],n:[4,5,6,7],h:[4,5,6,7]},
+  159:{model:'A款',w:[17.0,22.2,26.1,30.1],n:[6,7,8,9],h:[4,5,6,7]},
+  160:{model:'A款',w:[17.2,21.9,26.2,30.1],n:[6,7,8,9],h:[5,6,7,8]},
+  161:{model:'A款',w:[17.0,22.0,25.8,30.1],n:[6,7,8,9],h:[5,6,7,8]},
+  162:{model:'A款',w:[17.1,22.1,25.9,30.1],n:[8,9,10,11],h:[6,7,8,9]},
+  163:{model:'A款',w:[16.9,21.8,26.0,30.1],n:[8,9,10,11],h:[6,7,8,9]},
+  164:{model:'A款',w:[17.1,21.9,26.0,30.1],n:[8,9,10,11],h:[7,8,9,10]},
+  165:{model:'B款',w:[16.9,22.0,26.1,30.1],n:[1,1,2,3],h:[1,1,2,3]},
+  166:{model:'B款',w:[17.1,22.1,26.1,30.1],n:[1,1,2,3],h:[1,1,2,3]},
+  167:{model:'B款',w:[16.9,21.9,26.2,30.1],n:[1,1,2,3],h:[1,2,3,4]},
+  168:{model:'B款',w:[17.0,22.0,25.9,30.1],n:[2,3,4,5],h:[1,2,3,4]},
+  169:{model:'B款',w:[17.2,22.1,25.9,30.1],n:[2,3,4,5],h:[2,3,4,5]},
+  170:{model:'B款',w:[17.0,22.1,26.0,30.1],n:[2,3,4,5],h:[2,3,4,5]},
+  171:{model:'B款',w:[17.1,21.9,26.0,30.1],n:[4,5,6,7],h:[3,4,5,6]},
+  172:{model:'B款',w:[16.9,22.0,26.0,30.1],n:[4,5,6,7],h:[3,4,5,6]},
+  173:{model:'B款',w:[17.0,22.1,26.1,30.1],n:[4,5,6,7],h:[4,5,6,7]},
+  174:{model:'B款',w:[16.8,22.1,26.1,30.1],n:[6,7,8,9],h:[4,5,6,7]},
+  175:{model:'B款',w:[17.0,21.9,26.1,30.0],n:[6,7,8,9],h:[5,6,7,8]},
+  176:{model:'C款',w:[17.1,22.0,26.1,30.0],n:[1,1,2,3],h:[1,1,2,3]},
+  177:{model:'C款',w:[16.9,22.0,25.9,30.0],n:[1,1,2,3],h:[1,1,2,3]},
+  178:{model:'C款',w:[17.0,22.1,25.9,30.0],n:[1,1,2,3],h:[1,2,3,4]},
+  179:{model:'C款',w:[16.9,21.8,25.9,30.0],n:[2,3,4,5],h:[1,2,3,4]},
+  180:{model:'C款',w:[17.0,21.9,25.9,29.9],n:[2,3,4,5],h:[2,3,4,5]},
+  181:{model:'C款',w:[17.1,22.0,25.9,29.9],n:[2,3,4,5],h:[2,3,4,5]},
+  182:{model:'C款',w:[16.9,22.0,26.0,29.9],n:[4,5,6,7],h:[3,4,5,6]},
+  183:{model:'C款',w:[17.0,22.1,26.0,29.9],n:[4,5,6,7],h:[3,4,5,6]},
+  184:{model:'C款',w:[17.1,21.9,26.0,30.1],n:[4,5,6,7],h:[4,5,6,7]},
+  185:{model:'C款',w:[16.9,21.9,26.0,30.1],n:[6,7,8,9],h:[4,5,6,7]},
+  186:{model:'C款',w:[17.1,22.0,26.0,30.1],n:[6,7,8,9],h:[5,6,7,8]},
+  187:{model:'C款',w:[16.9,22.0,26.0,30.0],n:[6,7,8,9],h:[5,6,7,8]},
+  188:{model:'C款',w:[17.0,22.1,26.0,30.0],n:[8,9,10,11],h:[6,7,8,9]},
+  189:{model:'C款',w:[17.1,22.1,26.0,30.0],n:[8,9,10,11],h:[6,7,8,9]},
+  190:{model:'C款',w:[16.9,21.9,26.0,29.9],n:[8,9,10,11],h:[7,8,9,10]}
+};
+
+const bmiClasses    = ['偏瘦', '正常', '超重', '肥胖'];
+const rangeMap      = { 'A款': '150-164cm', 'B款': '165-175cm', 'C款': '176-190cm' };
+const adviceMap     = {
+  '偏瘦': '偏瘦体型：枕芯位置下调 1mm，提供更贴合的支撑。',
+  '正常': '标准体型：枕芯参数无需调整，享受最佳支撑体验。',
+  '超重': '超重体型：枕芯位置上移 1mm，建议配合侧卧睡姿。',
+  '肥胖': '肥胖体型：枕芯位置上移 2mm，加强颈部支撑力度。'
+};
+
+/* 体型 -> CSS 类名 / 主题 / 颜色 映射 */
+const CLASS_META = {
+  '偏瘦': { css: 'underweight', theme: 'theme-thin',  color: '#4ecdc4' },
+  '正常': { css: 'normal',      theme: 'theme-normal', color: '#55efc4' },
+  '超重': { css: 'overweight',  theme: 'theme-overweight', color: '#f9ca24' },
+  '肥胖': { css: 'obese',       theme: 'theme-obese',  color: '#ff6b6b' }
+};
+
+// ============================================================
+// DOM 引用 & 工具函数
+// ============================================================
+const $ = (id) => document.getElementById(id);
+const height = $('height');
+const weight = $('weight');
+
+/* 依据 BMI 返回体型分类索引：0=偏瘦 1=正常 2=超重 3=肥胖 */
+function getBmiClassIndex(bmi) {
+  if (bmi < 18.5) return 0;
+  if (bmi < 24)   return 1;
+  if (bmi < 28)   return 2;
+  return 3;
+}
+
+/* 同步滑杆填充进度 + 刻度 */
+function syncFill(slider) {
+  const min = parseFloat(slider.min);
+  const max = parseFloat(slider.max);
+  const pct = ((parseFloat(slider.value) - min) / (max - min)) * 100;
+  slider.style.background =
+    `linear-gradient(to right, #5ad1f4 0%, #8f7bff ${pct}%, rgba(255,255,255,0.08) ${pct}%, rgba(255,255,255,0.08) 100%), ` +
+    `repeating-linear-gradient(to right, rgba(255,255,255,0.10) 0 1px, transparent 1px 25px)`;
+}
+
+/* 数值滚动动画 */
+function animateNum(el, to, decimals = 0) {
+  const from = (el._val !== undefined ? el._val : parseFloat(el.textContent)) || 0;
+  if (Math.abs(from - to) < 0.05) {
+    el.textContent = to.toFixed(decimals);
+    el._val = to;
+    return;
+  }
+  const dur = 380, t0 = performance.now();
+  const ease = (t) => 1 - Math.pow(1 - t, 3);
+  const step = (now) => {
+    const p = Math.min(1, (now - t0) / dur);
+    el.textContent = (from + (to - from) * ease(p)).toFixed(decimals);
+    if (p < 1) requestAnimationFrame(step);
+    else el._val = to;
+  };
+  requestAnimationFrame(step);
+}
+
+/* 通用：点击数值直输（绑定一个滑杆） */
+function bindDirectInput(chipId, inputId, slider, onCommit) {
+  const chip = $(chipId), input = $(inputId);
+  const open = () => {
+    input.value = slider.value;
+    // 让输入框与数值按钮等宽，编辑时保持原位不跳动
+    input.style.width = chip.getBoundingClientRect().width + 'px';
+    chip.hidden = true;
+    input.hidden = false;
+    input.focus();
+    input.select();
+  };
+  const close = () => {
+    input.hidden = true;
+    chip.hidden = false;
+  };
+  chip.addEventListener('click', open);
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') input.blur();
+    if (e.key === 'Escape') { close(); slider.focus(); }
+  });
+  input.addEventListener('blur', () => {
+    let v = parseInt(input.value, 10);
+    if (isNaN(v)) v = parseInt(slider.value, 10);
+    v = Math.max(parseInt(slider.min, 10), Math.min(parseInt(slider.max, 10), v));
+    slider.value = v;
+    close();
+    onCommit(v);
+  });
+}
+
+// ============================================================
+// 滑杆事件
+// ============================================================
+function onSliderHeight() {
+  $('heightVal').textContent = height.value;
+  $('heightVal')._val = parseInt(height.value, 10);
+  syncFill(height);
+  updatePillow();
+}
+function onSliderWeight() {
+  $('weightVal').textContent = weight.value;
+  $('weightVal')._val = parseInt(weight.value, 10);
+  syncFill(weight);
+  updatePillow();
+}
+
+bindDirectInput('heightChip', 'heightInput', height, (v) => {
+  $('heightVal').textContent = v;
+  $('heightVal')._val = v;
+  syncFill(height);
+  updatePillow();
+});
+bindDirectInput('weightChip', 'weightInput', weight, (v) => {
+  $('weightVal').textContent = v;
+  $('weightVal')._val = v;
+  syncFill(weight);
+  updatePillow();
+});
+
+// ============================================================
+// 核心计算
+// ============================================================
+function updatePillow() {
+  const h = parseInt(height.value, 10);
+  const w = parseInt(weight.value, 10);
+  const bmi = w / ((h / 100) ** 2);
+
+  const data = pillowData[h];
+  if (!data) return;
+
+  const classIdx = getBmiClassIndex(bmi);
+  const bmiClass = bmiClasses[classIdx];
+  const meta     = CLASS_META[bmiClass];
+  const neckPos  = data.n[classIdx];
+  const headPos  = data.h[classIdx];
+  const bmiStr   = bmi.toFixed(1);
+
+  // 款式徽章（变化时弹跳）
+  const modelEl = $('pillowModel');
+  const newText = data.model + '（' + rangeMap[data.model] + '）';
+  if (modelEl._t && modelEl._t !== newText) {
+    modelEl.classList.remove('pop');
+    void modelEl.offsetWidth;
+    modelEl.classList.add('pop');
+  }
+  modelEl._t = newText;
+  $('pillowModelText').textContent = newText;
+
+  // BMI 数值 + 标签
+  animateNum($('bmiValue'), parseFloat(bmiStr), 1);
+  const bmiLabel = $('bmiLabel');
+  bmiLabel.classList.remove('underweight', 'normal', 'overweight', 'obese');
+  bmiLabel.textContent = bmiClass + '范围';
+  bmiLabel.classList.add(meta.css);
+
+  // BMI 区间仪表条
+  const marker = $('bmiMarker');
+  const pct = Math.max(0, Math.min(100, ((bmi - 14) / 18) * 100));
+  marker.style.left = pct + '%';
+
+  // 位置数据
+  animateNum($('neckPos'), neckPos, 0);
+  animateNum($('headPos'), headPos, 0);
+
+  // 建议文案
+  $('pillowAdviceText').textContent = adviceMap[bmiClass];
+
+  // 结果容器与位置卡片配色
+  const box = $('resultBox');
+  box.classList.remove('theme-thin', 'theme-normal', 'theme-overweight', 'theme-obese');
+  box.classList.add(meta.theme);
+  const cardCls = 'position-card card-' + meta.css;
+  $('neckCard').className = cardCls;
+  $('headCard').className = cardCls;
+}
+
+// ============================================================
+// 复制 / 重置
+// ============================================================
+let toastTimer = null;
+function showToast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+$('copyBtn').addEventListener('click', () => {
+  const h = parseInt(height.value, 10);
+  const w = parseInt(weight.value, 10);
+  const bmi = (w / ((h / 100) ** 2)).toFixed(1);
+  const data = pillowData[h];
+  if (!data) return;
+  const cls = bmiClasses[getBmiClassIndex(bmi)];
+  const text = [
+    '【乙太智枕定制】',
+    `身高 ${h}cm · 体重 ${w}kg`,
+    `推荐款式：${data.model}（${rangeMap[data.model]}）`,
+    `BMI ${bmi}`,
+    `颈椎支撑 ${data.n[getBmiClassIndex(bmi)]}mm ｜ 头部下沉 ${data.h[getBmiClassIndex(bmi)]}mm`,
+    adviceMap[cls]
+  ].join('\n');
+
+  const done = () => showToast('已复制到剪贴板');
+
+  /* 兼容：优先 Clipboard API；被浏览器（如 file:// 环境）拒绝时降级为 execCommand */
+  const fallback = () => {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.cssText = 'position:fixed;opacity:0;pointer-events:none;';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      ta.remove();
+      done();
+    } catch (e) {
+      showToast('复制失败，请手动选择');
+    }
+  };
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(done, fallback);
+  } else {
+    fallback();
+  }
+});
+
+$('resetBtn').addEventListener('click', () => {
+  height.value = 170;
+  weight.value = 65;
+  onSliderHeight();
+  onSliderWeight();
+  showToast('已恢复默认参数');
+});
+
+// ============================================================
+// 初始化
+// ============================================================
+syncFill(height);
+syncFill(weight);
+updatePillow();
+</script>
+</body>
+</html>
