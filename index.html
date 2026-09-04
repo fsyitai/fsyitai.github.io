@@ -3,10 +3,64 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>乙太智枕定制 · 智能枕芯计算器</title>
+<title>乙太智枕定制 · 智能枕芯建模</title>
+<link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap">
 <style>
 /* ============================================================
-   设计变量
+   标签切换（新增）
+   ============================================================ */
+.tabs { display: flex; justify-content: center; gap: 10px; margin: 22px 0 10px; flex-wrap: wrap; }
+.tab { display: inline-flex; align-items: center; gap: 8px; padding: 11px 26px; border-radius: 999px; border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.06); color: #a9bcc8; font-size: 14px; font-weight: 600; letter-spacing: .5px; cursor: pointer; transition: all .25s cubic-bezier(.22,.8,.24,1); font-family: inherit; }
+.tab svg { width: 17px; height: 17px; }
+.tab:hover { color: #f4f8fb; border-color: rgba(90,209,244,.4); transform: translateY(-1px); }
+.tab.active { background: linear-gradient(135deg, #5ad1f4, #8f7bff); color: #08202c; border-color: transparent; box-shadow: 0 8px 22px rgba(90,209,244,.35); }
+.view { display: none; }
+.view.active { display: block; animation: viewIn .5s cubic-bezier(.22,.8,.24,1) both; }
+@keyframes viewIn { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ============ 乙太卡片（独立居中版） ============ */
+.eta-wrap { display: flex; justify-content: center; padding-top: 6px; }
+.card {
+  position: relative;
+  width: 100%;
+  max-width: 540px;
+  padding: 38px 36px 30px;
+  border-radius: 24px;
+  border: 1px solid transparent;
+  background:
+    linear-gradient(168deg, rgba(22,45,62,.74), rgba(10,24,36,.64)) padding-box,
+    linear-gradient(135deg, rgba(90,209,244,.55), rgba(255,255,255,.06) 30%, rgba(255,255,255,.05) 62%, rgba(143,123,255,.55)) border-box;
+  box-shadow: 0 24px 70px rgba(2,10,18,.6);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+.card > * { position: relative; z-index: 1; }
+.result-box {
+  margin-top: 24px;
+  padding: 26px 22px;
+  border-radius: 16px;
+  background: rgba(4,14,22,.45);
+  border: 1px solid rgba(255,255,255,.12);
+  text-align: center;
+  transition: border-color .5s cubic-bezier(.22,.8,.24,1), box-shadow .5s cubic-bezier(.22,.8,.24,1);
+}
+.result-box.theme-thin { border-color: rgba(78,205,196,.5); box-shadow: 0 0 44px rgba(78,205,196,.16), 0 18px 50px rgba(2,12,20,.45); }
+.result-box.theme-normal { border-color: rgba(85,239,196,.5); box-shadow: 0 0 44px rgba(85,239,196,.16), 0 18px 50px rgba(2,12,20,.45); }
+.result-box.theme-overweight { border-color: rgba(249,202,36,.5); box-shadow: 0 0 44px rgba(249,202,36,.16), 0 18px 50px rgba(2,12,20,.45); }
+.result-box.theme-obese { border-color: rgba(255,107,107,.5); box-shadow: 0 0 44px rgba(255,107,107,.16), 0 18px 50px rgba(2,12,20,.45); }
+
+/* ============ X光页头部 ============ */
+.xray-head { margin-top: 8px; text-align: center; }
+.xray-head .kicker {
+  display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: #5ad1f4; letter-spacing: .08em;
+  border: 1px solid rgba(90,209,244,.32); border-radius: 999px; padding: 4px 14px; background: rgba(90,209,244,.08); margin-bottom: 10px;
+}
+.xray-head .kicker::before { content:''; width: 6px; height: 6px; border-radius: 50%; background: #5ad1f4; box-shadow: 0 0 8px #5ad1f4; }
+.xray-head h2 { font-size: 22px; font-weight: 700; color: #f4f8fb; }
+.xray-head .sub { color: #a9bcc8; font-size: 13px; margin-top: 6px; }
+
+/* ============================================================
+   设计变量（融合：乙太智枕视觉 + X光建模配色）
    ============================================================ */
 :root {
   --bg-deep: #060d17;
@@ -22,11 +76,14 @@
   --accent-2: #8f7bff;
   --accent-grad: linear-gradient(135deg, #5ad1f4, #8f7bff);
   --accent-glow: rgba(90, 209, 244, 0.35);
-  --thin: #4ecdc4;      /* 偏瘦 */
-  --ok: #55efc4;        /* 正常 */
-  --warn: #f9ca24;      /* 超重 */
-  --danger: #ff6b6b;    /* 肥胖 */
-  --r-lg: 28px;
+  --sky: #38BDF8;
+  --teal: #2DD4BF;
+  --success: #4ADE80;
+  --warn: #FBBF24;
+  --danger: #F87171;
+  --thin: #4ecdc4;
+  --ok: #55efc4;
+  --r-lg: 24px;
   --r-md: 16px;
   --r-sm: 12px;
   --ease: cubic-bezier(0.22, 0.8, 0.24, 1);
@@ -34,66 +91,32 @@
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
-
 [hidden] { display: none !important; }
-
 html, body { min-height: 100%; }
 
 body {
   position: relative;
   min-height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 28px 16px;
+  padding: 34px 18px 44px;
   overflow-x: hidden;
   color: var(--text-2);
   line-height: 1.6;
-  font-family: "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+  font-family: "Noto Sans SC", "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", "Segoe UI", sans-serif;
   background:
     radial-gradient(1200px 820px at 82% -10%, rgba(90, 209, 244, 0.16), transparent 62%),
     radial-gradient(1000px 720px at -8% 112%, rgba(143, 123, 255, 0.16), transparent 62%),
     linear-gradient(160deg, var(--bg-deep) 0%, var(--bg-1) 45%, var(--bg-2) 100%);
 }
 
-/* ============================================================
-   动态背景：极光光斑 + 星空
-   ============================================================ */
-.orb {
-  position: fixed;
-  border-radius: 50%;
-  filter: blur(90px);
-  opacity: 0.5;
-  z-index: 0;
-  pointer-events: none;
-}
-.orb-1 {
-  width: 440px; height: 440px;
-  top: -140px; left: -100px;
-  background: radial-gradient(circle, rgba(90, 209, 244, 0.55), transparent 70%);
-  animation: orbA 16s ease-in-out infinite alternate;
-}
-.orb-2 {
-  width: 480px; height: 480px;
-  bottom: -160px; right: -120px;
-  background: radial-gradient(circle, rgba(143, 123, 255, 0.52), transparent 70%);
-  animation: orbB 20s ease-in-out infinite alternate;
-}
-.orb-3 {
-  width: 300px; height: 300px;
-  top: 45%; left: 50%;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.06), transparent 70%);
-  animation: orbA 24s ease-in-out infinite alternate-reverse;
-}
+/* ============ 动态背景：极光 + 星空 ============ */
+.orb { position: fixed; border-radius: 50%; filter: blur(90px); opacity: .5; z-index: 0; pointer-events: none; }
+.orb-1 { width: 440px; height: 440px; top: -140px; left: -100px; background: radial-gradient(circle, rgba(90,209,244,.55), transparent 70%); animation: orbA 16s ease-in-out infinite alternate; }
+.orb-2 { width: 480px; height: 480px; bottom: -160px; right: -120px; background: radial-gradient(circle, rgba(143,123,255,.52), transparent 70%); animation: orbB 20s ease-in-out infinite alternate; }
+.orb-3 { width: 300px; height: 300px; top: 45%; left: 50%; background: radial-gradient(circle, rgba(255,255,255,.06), transparent 70%); animation: orbA 24s ease-in-out infinite alternate-reverse; }
 @keyframes orbA { to { transform: translate(60px, 46px) scale(1.16); } }
 @keyframes orbB { to { transform: translate(-54px, -42px) scale(1.1); } }
 
-.stars {
-  position: fixed;
-  inset: -10%;
-  z-index: 0;
-  pointer-events: none;
-  opacity: 0.6;
+.stars { position: fixed; inset: -10%; z-index: 0; pointer-events: none; opacity: .6;
   background-image:
     radial-gradient(1.5px 1.5px at 12% 22%, rgba(255,255,255,.55), transparent 100%),
     radial-gradient(1px 1px at 27% 64%, rgba(255,255,255,.4), transparent 100%),
@@ -103,549 +126,457 @@ body {
     radial-gradient(1px 1px at 84% 58%, rgba(255,255,255,.45), transparent 100%),
     radial-gradient(1.5px 1.5px at 33% 88%, rgba(255,255,255,.35), transparent 100%),
     radial-gradient(1px 1px at 66% 8%, rgba(255,255,255,.4), transparent 100%);
-  background-size: 420px 420px;
-  animation: starDrift 90s linear infinite;
-}
+  background-size: 420px 420px; animation: starDrift 90s linear infinite; }
 @keyframes starDrift { from { background-position: 0 0; } to { background-position: 420px 420px; } }
 
-/* ============================================================
-   卡片容器（渐变描边 + 流光）
-   ============================================================ */
-.card {
+/* ============ 布局容器 ============ */
+.wrap { position: relative; z-index: 1; max-width: 1240px; margin: 0 auto; }
+.page-card {
   position: relative;
-  z-index: 1;
-  width: 100%;
-  max-width: 520px;
-  padding: 40px 38px 34px;
+  padding: 36px 30px 30px;
   border-radius: var(--r-lg);
   border: 1px solid transparent;
   background:
-    linear-gradient(168deg, rgba(22, 45, 62, 0.74), rgba(10, 24, 36, 0.64)) padding-box,
-    linear-gradient(135deg, rgba(90, 209, 244, 0.55), rgba(255, 255, 255, 0.06) 30%, rgba(255, 255, 255, 0.05) 62%, rgba(143, 123, 255, 0.55)) border-box;
+    linear-gradient(168deg, rgba(22,45,62,.7), rgba(10,24,36,.62)) padding-box,
+    linear-gradient(135deg, rgba(90,209,244,.45), rgba(255,255,255,.06) 30%, rgba(255,255,255,.05) 62%, rgba(143,123,255,.45)) border-box;
   box-shadow: var(--shadow);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   overflow: hidden;
-  animation: riseIn 0.7s var(--ease) both;
+  animation: riseIn .7s var(--ease) both;
 }
-.card > * { position: relative; z-index: 1; }
+.page-card > * { position: relative; z-index: 1; }
+@keyframes riseIn { from { opacity: 0; transform: translateY(26px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
-/* 顶部流光扫过 */
-.card::after {
-  content: "";
-  position: absolute;
-  top: 0; left: -80%;
-  width: 55%; height: 100%;
-  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.055), transparent);
-  transform: skewX(-20deg);
-  animation: sheen 7s ease-in-out infinite;
-  pointer-events: none;
-}
-@keyframes sheen {
-  0%, 58% { left: -80%; }
-  100% { left: 135%; }
-}
-
-@keyframes riseIn {
-  from { opacity: 0; transform: translateY(26px) scale(0.985); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-/* ============================================================
-   标题区
-   ============================================================ */
+/* ============ 头部 ============ */
 .brand { display: flex; justify-content: center; margin-bottom: 14px; }
-
-.brand-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 18px;
-  border-radius: 999px;
-  background: var(--accent-grad);
-  color: #08202c;
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 2px;
-  box-shadow: 0 8px 26px var(--accent-glow);
-}
+.brand-badge { display: inline-flex; align-items: center; gap: 8px; padding: 8px 18px; border-radius: 999px; background: var(--accent-grad); color: #08202c; font-size: 13px; font-weight: 700; letter-spacing: 2px; box-shadow: 0 8px 26px var(--accent-glow); }
 .brand-badge svg { width: 16px; height: 16px; }
+.title { font-size: 30px; font-weight: 800; text-align: center; color: var(--text-1); letter-spacing: 1px;
+  background: linear-gradient(120deg, #ffffff, #bfe9ff); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.subtitle { text-align: center; font-size: 14px; margin: 8px 0 0; color: var(--text-2); letter-spacing: .5px; }
 
-.title {
-  font-size: 30px;
-  font-weight: 800;
-  text-align: center;
-  color: var(--text-1);
-  letter-spacing: 1px;
-  background: linear-gradient(120deg, #ffffff, #bfe9ff);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
+.flow { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 10px; margin-top: 18px; color: var(--text-3); font-size: 13px; align-items: center; }
+.flow .step { display: inline-flex; align-items: center; gap: 7px; padding: 5px 13px; border: 1px solid rgba(90,209,244,.22); border-radius: 999px; background: rgba(255,255,255,.05); color: var(--text-2); font-size: 12.5px; transition: border-color .15s, color .15s; }
+.flow .step:hover { border-color: rgba(90,209,244,.5); color: var(--text-1); }
+.flow .step::before { content:''; width: 5px; height: 5px; border-radius: 50%; background: var(--teal); opacity: .85; }
+.flow .arr { color: var(--teal); font-weight: 700; }
 
-.subtitle {
-  text-align: center;
-  font-size: 14px;
-  margin: 8px 0 32px;
-  color: var(--text-2);
-  letter-spacing: 0.5px;
-}
+/* ============ 主栅格 ============ */
+.grid { display: grid; grid-template-columns: minmax(0,1.35fr) minmax(340px,1fr); gap: 18px; align-items: start; margin-top: 22px; }
+@media (max-width: 920px) { .grid { grid-template-columns: 1fr; } }
 
-/* ============================================================
-   输入组
-   ============================================================ */
-.input-group { margin-bottom: 26px; }
+.panel { background: linear-gradient(180deg, rgba(22,45,62,.55), rgba(13,28,42,.55)); border: 1px solid var(--glass-border); border-radius: var(--r-md); padding: 18px; box-shadow: inset 0 1px 0 rgba(255,255,255,.04); }
+.panel + .panel { margin-top: 14px; }
+.panel-title { font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 9px; margin-bottom: 13px; color: var(--text-1); letter-spacing: .02em; }
+.panel-title .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex: none; box-shadow: 0 0 10px currentColor; }
+.panel-title .dot.teal { background: var(--teal); }
+.panel-title .dot.green { background: var(--success); }
 
-.label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 16px;
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--text-1);
-  letter-spacing: 0.5px;
-}
+/* ============ 上传 ============ */
+.upload { border: 1.5px dashed rgba(90,209,244,.4); border-radius: 14px; padding: 34px 16px; text-align: center; cursor: pointer; transition: all .18s; background: rgba(90,209,244,.04); }
+.upload:hover, .upload.drag { border-color: var(--accent); background: rgba(90,209,244,.08); box-shadow: inset 0 0 30px rgba(90,209,244,.12); }
+.upload svg { width: 38px; height: 38px; stroke: var(--accent); margin-bottom: 10px; filter: drop-shadow(0 0 8px rgba(90,209,244,.45)); }
+.upload .u-main { font-size: 14.5px; color: var(--text-1); }
+.upload .u-sub { font-size: 12px; color: var(--text-3); margin-top: 5px; }
+.file-input { display: none; }
+
+.auto-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; }
+.auto-btn { display: inline-flex; align-items: center; gap: 8px; background: var(--accent-grad); color: #08202c; border: none; border-radius: 11px; padding: 12px 20px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; box-shadow: 0 4px 20px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,.35); transition: filter .15s, transform .05s, box-shadow .15s; }
+.auto-btn:hover { filter: brightness(1.08); box-shadow: 0 6px 26px rgba(90,209,244,.45), inset 0 1px 0 rgba(255,255,255,.35); }
+.auto-btn:active { transform: translateY(1px); }
+.auto-btn:disabled { opacity: .5; cursor: wait; box-shadow: none; }
+.auto-btn svg { width: 18px; height: 18px; stroke: currentColor; }
+.auto-note { font-size: 12px; color: var(--text-3); }
+.auto-status { font-size: 13px; color: var(--warn); margin-top: 9px; display: none; line-height: 1.7; }
+
+.modes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 13px; }
+.mode { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--glass-border); background: rgba(255,255,255,.05); color: var(--text-2); border-radius: 9px; padding: 6px 13px; font-size: 13px; cursor: pointer; transition: all .15s; font-family: inherit; }
+.mode:hover { color: var(--text-1); border-color: rgba(90,209,244,.4); }
+.mode.on { color: #06121F; background: var(--sky); border-color: var(--sky); font-weight: 600; box-shadow: 0 0 16px rgba(56,189,248,.3); }
+.mode.on.borden-mode { background: var(--teal); border-color: var(--teal); box-shadow: 0 0 16px rgba(45,212,191,.3); }
+.mode.on.calib-mode { background: var(--warn); border-color: var(--warn); box-shadow: 0 0 16px rgba(251,191,36,.3); color: #1a1204; }
+.mode.danger { color: var(--danger); border-color: rgba(248,113,113,.4); }
+.mode.danger:hover { color: var(--danger); border-color: rgba(248,113,113,.6); }
+
+.guide { margin-top: 10px; font-size: 13px; min-height: 20px; color: var(--accent); padding: 0 2px; }
+.guide.done { color: var(--success); }
+
+.canvas-box { width: 100%; overflow: hidden; border-radius: 14px; background: radial-gradient(85% 65% at 50% 38%, #0b1220 0%, #05080f 100%); border: 1px solid rgba(90,209,244,.25); line-height: 0; margin-top: 13px; position: relative; box-shadow: 0 0 26px rgba(90,209,244,.09), inset 0 4px 24px rgba(0,0,0,.45); }
+canvas { width: 100%; height: auto; display: block; cursor: crosshair; touch-action: none; }
+.canvas-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #51638a; font-size: 13px; pointer-events: none; letter-spacing: .04em; }
+
+.meas { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 13px; }
+.meas-item { background: rgba(255,255,255,.05); border: 1px solid var(--glass-border); border-radius: 12px; padding: 12px 14px; position: relative; overflow: hidden; }
+.meas-item::before { content:''; position: absolute; top:0; left:12%; right:12%; height:2px; background: linear-gradient(90deg, transparent, rgba(90,209,244,.8), transparent); opacity:.55; }
+.meas-item:nth-child(2)::before { background: linear-gradient(90deg, transparent, rgba(45,212,191,.8), transparent); }
+.meas-item .lbl { font-size: 12px; color: var(--text-3); }
+.meas-item .val { font-size: 24px; font-weight: 700; margin-top: 3px; color: var(--text-1); font-variant-numeric: tabular-nums; }
+.meas-item .val small { font-size: 12px; font-weight: 400; color: var(--text-3); }
+.meas-item .tag { display: inline-block; font-size: 11px; color: var(--warn); margin-left: 6px; font-weight: 400; }
+.meas-item .tag.tag-est { color: #d99a1f; background: rgba(180,83,9,.15); padding: 1px 6px; border-radius: 8px; }
+.meas-item.pending .val { color: #4a5a78; font-weight: 500; font-size: 14px; }
+.scale-hint { font-size: 12px; color: var(--text-3); margin-top: 8px; }
+.anat-ref { font-size: 12px; color: var(--text-3); margin-top: 8px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.anat-ref input { width: 64px; padding: 5px 7px; border: 1px solid var(--glass-border); border-radius: 7px; font-size: 13px; background: rgba(4,14,22,.5); color: var(--text-1); }
+.anat-ref input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(90,209,244,.14); }
+
+/* ============ 输入组（乙太滑杆） ============ */
+.input-group { margin-bottom: 22px; }
+.label { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; font-size: 15px; font-weight: 600; color: var(--text-1); letter-spacing: .5px; }
 .label svg { width: 18px; height: 18px; color: var(--accent); flex-shrink: 0; }
+.unit-tag { margin-left: auto; font-size: 12px; font-weight: 500; color: var(--text-2); background: rgba(255,255,255,.08); border: 1px solid var(--glass-border); border-radius: 6px; padding: 2px 10px; letter-spacing: 1px; }
 
-.unit-tag {
-  margin-left: auto;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text-2);
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid var(--glass-border);
-  border-radius: 6px;
-  padding: 2px 10px;
-  letter-spacing: 1px;
-}
-
-/* 滑杆 */
-input[type="range"] {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 100%;
-  height: 8px;
-  border-radius: 6px;
-  outline: none;
-  cursor: pointer;
-  background: rgba(255, 255, 255, 0.1);
-  transition: box-shadow 0.3s var(--ease);
-}
-input[type="range"]:focus-visible {
-  box-shadow: 0 0 0 4px rgba(90, 209, 244, 0.18);
-}
-
-input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 24px; height: 24px;
-  border-radius: 50%;
-  border: 3px solid #fff;
-  background: var(--accent-grad);
-  box-shadow: 0 0 0 4px rgba(90, 209, 244, 0.2), 0 6px 18px var(--accent-glow);
-  cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-input[type="range"]::-webkit-slider-thumb:hover  { transform: scale(1.18); }
-input[type="range"]::-webkit-slider-thumb:active {
-  transform: scale(1.05);
-  box-shadow: 0 0 0 9px rgba(90, 209, 244, 0.16), 0 6px 20px var(--accent-glow);
-}
-
-input[type="range"]::-moz-range-thumb {
-  width: 18px; height: 18px;
-  border-radius: 50%;
-  border: 3px solid #fff;
-  background: var(--accent-grad);
-  box-shadow: 0 0 0 4px rgba(90, 209, 244, 0.2), 0 6px 18px var(--accent-glow);
-  cursor: pointer;
-  transition: transform 0.2s;
-}
+input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 8px; border-radius: 6px; outline: none; cursor: pointer; background: rgba(255,255,255,.1); transition: box-shadow .3s var(--ease); }
+input[type="range"]:focus-visible { box-shadow: 0 0 0 4px rgba(90,209,244,.18); }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 24px; height: 24px; border-radius: 50%; border: 3px solid #fff; background: var(--accent-grad); box-shadow: 0 0 0 4px rgba(90,209,244,.2), 0 6px 18px var(--accent-glow); cursor: pointer; transition: transform .2s, box-shadow .2s; }
+input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.18); }
+input[type="range"]::-webkit-slider-thumb:active { transform: scale(1.05); box-shadow: 0 0 0 9px rgba(90,209,244,.16), 0 6px 20px var(--accent-glow); }
+input[type="range"]::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; border: 3px solid #fff; background: var(--accent-grad); box-shadow: 0 0 0 4px rgba(90,209,244,.2), 0 6px 18px var(--accent-glow); cursor: pointer; }
 input[type="range"]::-moz-range-thumb:hover { transform: scale(1.18); }
 input[type="range"]::-moz-range-track { height: 8px; border-radius: 6px; background: transparent; }
 
-/* 数值显示（可点击直输） */
-.value-display {
-  display: flex;
-  align-items: baseline;
-  justify-content: center;
-  gap: 6px;
-  margin-top: 12px;
-  font-size: 34px;
-  font-weight: 800;
-  color: var(--text-1);
-  line-height: 1;
-  min-height: 42px;
-}
+.value-display { display: flex; align-items: baseline; justify-content: center; gap: 6px; margin-top: 12px; font-size: 34px; font-weight: 800; color: var(--text-1); line-height: 1; min-height: 42px; }
 .value-display .num { font-variant-numeric: tabular-nums; }
 .value-display .unit { font-size: 17px; font-weight: 400; color: var(--text-2); }
-
-.value-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 2px;
-  background: none;
-  border: none;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-  border-radius: 8px;
-  transition: transform 0.2s var(--ease);
-}
+.value-chip { display: inline-flex; align-items: center; gap: 8px; padding: 0 2px; background: none; border: none; color: inherit; font: inherit; cursor: pointer; border-radius: 8px; transition: transform .2s var(--ease); }
 .value-chip:hover { transform: translateY(-1px); }
-.value-chip .edit-ico {
-  width: 15px; height: 15px;
-  color: var(--accent);
-  opacity: 0;
-  transform: translateX(-5px);
-  transition: all 0.25s var(--ease);
-}
-.value-chip:hover .edit-ico, .value-chip:focus-visible .edit-ico { opacity: 0.9; transform: translateX(0); }
-
-.stealth {
-  width: 112px;
-  padding: 6px 10px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(90, 209, 244, 0.45);
-  color: var(--text-1);
-  font: inherit;
-  font-size: 26px;
-  font-weight: 800;
-  text-align: center;
-  outline: none;
-  font-variant-numeric: tabular-nums;
-}
-.stealth:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(90, 209, 244, 0.18); }
+.value-chip .edit-ico { width: 15px; height: 15px; color: var(--accent); opacity: 0; transform: translateX(-5px); transition: all .25s var(--ease); }
+.value-chip:hover .edit-ico, .value-chip:focus-visible .edit-ico { opacity: .9; transform: translateX(0); }
+.stealth { width: 112px; padding: 6px 10px; border-radius: 10px; background: rgba(255,255,255,.08); border: 1px solid rgba(90,209,244,.45); color: var(--text-1); font: inherit; font-size: 26px; font-weight: 800; text-align: center; outline: none; font-variant-numeric: tabular-nums; }
+.stealth:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(90,209,244,.18); }
 .stealth::-webkit-outer-spin-button, .stealth::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .stealth { -moz-appearance: textfield; appearance: textfield; }
+.range-hint { display: flex; justify-content: space-between; margin-top: 8px; font-size: 12px; color: var(--text-3); }
 
-.range-hint {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 8px;
-  font-size: 12px;
-  color: var(--text-3);
-}
+/* ============ 表单字段 ============ */
+.field { margin-bottom: 12px; }
+.field label { display: block; font-size: 13px; color: var(--text-2); margin-bottom: 5px; }
+.field .row { display: flex; gap: 8px; align-items: center; }
+.field input { width: 100%; background: rgba(4,14,22,.5); border: 1px solid var(--glass-border); border-radius: 10px; color: var(--text-1); padding: 10px 12px; font-size: 14px; font-family: inherit; outline: none; transition: border-color .15s, box-shadow .15s; }
+.field input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(90,209,244,.14); }
+.field input::placeholder { color: #4a5a78; }
+.field .unit { color: var(--text-3); font-size: 12px; flex: none; }
+.inline2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.bmi-readout { background: linear-gradient(135deg, rgba(45,212,191,.12), rgba(45,212,191,.04)); border: 1px solid rgba(45,212,191,.32); border-radius: 9px; padding: 9px 12px; font-size: 13px; color: var(--teal); margin-top: 8px; display: none; }
+.bmi-readout.show { display: block; }
 
-/* ============================================================
-   结果区域
-   ============================================================ */
-.result-box {
-  margin-top: 26px;
-  padding: 26px 22px;
-  border-radius: var(--r-md);
-  background: rgba(4, 14, 22, 0.45);
-  border: 1px solid var(--glass-border);
-  text-align: center;
-  transition: border-color 0.5s var(--ease), box-shadow 0.5s var(--ease);
-}
+details.manual { margin-top: 4px; }
+details.manual summary { cursor: pointer; font-size: 13px; color: var(--text-2); list-style: none; display: inline-flex; align-items: center; gap: 6px; transition: color .15s; }
+details.manual summary:hover { color: var(--text-1); }
+details.manual summary::-webkit-details-marker { display: none; }
+details.manual summary .tw { transition: transform .15s; display: inline-block; }
+details.manual[open] summary .tw { transform: rotate(90deg); }
+details.manual .inner { margin-top: 10px; }
 
-/* 按体型着色的结果光环 */
-.result-box.theme-thin {
-  border-color: rgba(78, 205, 196, 0.5);
-  box-shadow: 0 0 44px rgba(78, 205, 196, 0.16), 0 18px 50px rgba(2, 12, 20, 0.45);
-}
-.result-box.theme-normal {
-  border-color: rgba(85, 239, 196, 0.5);
-  box-shadow: 0 0 44px rgba(85, 239, 196, 0.16), 0 18px 50px rgba(2, 12, 20, 0.45);
-}
-.result-box.theme-overweight {
-  border-color: rgba(249, 202, 36, 0.5);
-  box-shadow: 0 0 44px rgba(249, 202, 36, 0.16), 0 18px 50px rgba(2, 12, 20, 0.45);
-}
-.result-box.theme-obese {
-  border-color: rgba(255, 107, 107, 0.5);
-  box-shadow: 0 0 44px rgba(255, 107, 107, 0.16), 0 18px 50px rgba(2, 12, 20, 0.45);
-}
+/* ============ 按钮 ============ */
+.calc-btn { width: 100%; margin-top: 14px; background: var(--accent-grad); color: #08202c; border: none; border-radius: 11px; padding: 13px 16px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; box-shadow: 0 4px 18px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,.3); transition: filter .15s, transform .05s, box-shadow .15s; }
+.calc-btn.ghost { background: transparent; border: 1px solid rgba(45,212,191,.5); color: var(--teal); box-shadow: none; }
+.calc-btn.ghost:hover { background: rgba(45,212,191,.08); transform: none; box-shadow: 0 0 16px rgba(45,212,191,.15); }
+.calc-btn:hover { filter: brightness(1.08); box-shadow: 0 6px 22px rgba(90,209,244,.4), inset 0 1px 0 rgba(255,255,255,.3); }
+.calc-btn:active { transform: translateY(1px); }
 
-/* 款式徽章 */
-.pillow-model {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 16px;
-  padding: 9px 20px;
-  border-radius: 999px;
-  background: rgba(90, 209, 244, 0.14);
-  border: 1px solid rgba(90, 209, 244, 0.35);
-  color: var(--accent);
-  font-size: 16px;
-  font-weight: 700;
-  letter-spacing: 1px;
-}
+.actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 13px 10px; border-radius: var(--r-sm); border: 1px solid var(--glass-border); background: rgba(255,255,255,.07); color: var(--text-1); font: inherit; font-size: 14px; font-weight: 600; letter-spacing: .5px; cursor: pointer; transition: all .25s var(--ease); }
+.btn svg { width: 17px; height: 17px; }
+.btn:hover { background: rgba(255,255,255,.12); transform: translateY(-2px); }
+.btn:active { transform: translateY(0) scale(.98); }
+.btn-primary { border-color: transparent; background: var(--accent-grad); color: #08202c; box-shadow: 0 8px 22px var(--accent-glow); }
+.btn-primary:hover { background: var(--accent-grad); filter: brightness(1.08); }
+.btn:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(90,209,244,.35); }
+
+/* ============ 结果区 ============ */
+.result { display: none; margin-top: 14px; }
+.result.show { display: block; animation: rise .25s ease; }
+@keyframes rise { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+.hero-result { background: radial-gradient(90% 130% at 50% 0%, rgba(90,209,244,.2), rgba(143,123,255,.07) 70%); border: 1px solid rgba(90,209,244,.4); border-radius: 14px; padding: 18px 16px; text-align: center; }
+.hero-result .big { font-size: 42px; font-weight: 700; color: var(--accent); line-height: 1.2; text-shadow: 0 0 26px rgba(90,209,244,.4); font-variant-numeric: tabular-nums; }
+.hero-result .big small { font-size: 15px; color: var(--text-3); font-weight: 400; }
+.hero-result .cap { font-size: 13px; color: var(--text-3); margin-top: 5px; }
+
+.formula { margin-top: 12px; background: rgba(255,255,255,.05); border: 1px solid var(--glass-border); border-radius: 11px; padding: 12px 14px; font-size: 13px; }
+.formula .f-title { color: var(--text-3); font-size: 12px; margin-bottom: 6px; }
+.formula .f-line { display: flex; justify-content: space-between; gap: 10px; padding: 2px 0; }
+.formula .f-line .k { color: var(--text-3); }
+.formula .f-line .v { color: var(--text-1); font-variant-numeric: tabular-nums; }
+.formula .f-total { border-top: 1px solid var(--glass-border); margin-top: 6px; padding-top: 8px; font-weight: 700; }
+
+.notice { margin-top: 12px; display: flex; gap: 8px; font-size: 12.5px; color: var(--text-3); background: linear-gradient(135deg, rgba(251,191,36,.08), rgba(251,191,36,.03)); border: 1px solid rgba(251,191,36,.28); border-radius: 9px; padding: 10px 12px; line-height: 1.7; }
+.notice svg { flex: none; margin-top: 1px; stroke: var(--warn); }
+.notice.danger { background: linear-gradient(135deg, rgba(248,113,113,.08), rgba(248,113,113,.03)); border-color: rgba(248,113,113,.32); }
+.notice.danger svg { stroke: var(--danger); }
+
+.manual-copy { margin-top: 10px; }
+.manual-copy .mc-tip { font-size: 12px; color: var(--text-3); margin-bottom: 6px; }
+.manual-copy textarea { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid var(--glass-border); border-radius: 8px; font-size: 12.5px; line-height: 1.6; font-family: inherit; color: var(--text-1); background: rgba(4,14,22,.5); resize: vertical; }
+
+/* ============ 乙太款式结果 ============ */
+.pillow-model { display: inline-flex; align-items: center; gap: 6px; margin: 2px 0 12px; padding: 9px 20px; border-radius: 999px; background: rgba(90,209,244,.14); border: 1px solid rgba(90,209,244,.35); color: var(--accent); font-size: 16px; font-weight: 700; letter-spacing: 1px; }
 .pillow-model svg { width: 16px; height: 16px; }
-.pillow-model.pop { animation: pop 0.45s var(--ease); }
-@keyframes pop {
-  0% { transform: scale(0.82); }
-  55% { transform: scale(1.07); }
-  100% { transform: scale(1); }
-}
+.pillow-model.pop { animation: pop .45s var(--ease); }
+@keyframes pop { 0% { transform: scale(.82); } 55% { transform: scale(1.07); } 100% { transform: scale(1); } }
+.theta-row { display: flex; align-items: baseline; gap: 8px; margin-top: 4px; }
+.bmi-value { font-size: 44px; font-weight: 800; color: var(--text-1); line-height: 1.1; font-variant-numeric: tabular-nums; }
+.bmi-unit { font-size: 18px; font-weight: 400; color: var(--text-2); margin-left: 6px; }
+.bmi-label { display: inline-block; margin: 8px 0 0; padding: 4px 16px; border-radius: 999px; font-size: 14px; font-weight: 600; letter-spacing: 1px; }
+.bmi-label.underweight { color: var(--thin); background: rgba(78,205,196,.12); }
+.bmi-label.normal { color: var(--ok); background: rgba(85,239,196,.12); }
+.bmi-label.overweight { color: var(--warn); background: rgba(249,202,36,.12); }
+.bmi-label.obese { color: var(--danger); background: rgba(255,107,107,.12); }
 
-/* BMI */
-.bmi-value {
-  font-size: 54px;
-  font-weight: 800;
-  color: var(--text-1);
-  line-height: 1.1;
-  font-variant-numeric: tabular-nums;
-}
-.bmi-unit { font-size: 20px; font-weight: 400; color: var(--text-2); margin-left: 6px; }
+.gauge { margin-top: 14px; }
+.gauge-track { position: relative; height: 12px; border-radius: 999px; display: flex; overflow: visible; }
+.zone { height: 100%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600; letter-spacing: .5px; color: rgba(255,255,255,.92); text-shadow: 0 1px 3px rgba(0,0,0,.4); }
+.zone.thin { flex-basis: 25%; background: linear-gradient(90deg, rgba(78,205,196,.45), rgba(78,205,196,.9)); }
+.zone.normal { flex-basis: 30.56%; background: linear-gradient(90deg, rgba(85,239,196,.45), rgba(85,239,196,.9)); }
+.zone.overweight { flex-basis: 22.22%; background: linear-gradient(90deg, rgba(249,202,36,.45), rgba(249,202,36,.9)); }
+.zone.obese { flex-basis: 22.22%; background: linear-gradient(90deg, rgba(255,107,107,.45), rgba(255,107,107,.9)); }
+.gauge-marker { position: absolute; top: -4px; left: 0; width: 20px; height: 20px; border-radius: 50%; background: #fff; border: 3px solid var(--accent); box-shadow: 0 2px 12px rgba(0,0,0,.5), 0 0 0 4px rgba(90,209,244,.18); transform: translateX(-50%); transition: left .55s var(--ease); }
+.gauge-scale { display: flex; justify-content: space-between; margin-top: 7px; font-size: 10px; color: var(--text-3); font-variant-numeric: tabular-nums; }
 
-.bmi-label {
-  display: inline-block;
-  margin-top: 10px;
-  padding: 4px 16px;
-  border-radius: 999px;
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: 1px;
-}
-.bmi-label.underweight { color: var(--thin);   background: rgba(78, 205, 196, 0.12); }
-.bmi-label.normal      { color: var(--ok);     background: rgba(85, 239, 196, 0.12); }
-.bmi-label.overweight  { color: var(--warn);   background: rgba(249, 202, 36, 0.12); }
-.bmi-label.obese       { color: var(--danger); background: rgba(255, 107, 107, 0.12); }
-
-/* BMI 区间仪表条 */
-.gauge { margin-top: 16px; }
-.gauge-track {
-  position: relative;
-  height: 12px;
-  border-radius: 999px;
-  display: flex;
-  overflow: visible;
-}
-.zone {
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-  color: rgba(255, 255, 255, 0.92);
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
-}
-.zone.thin { flex-basis: 25%;    background: linear-gradient(90deg, rgba(78, 205, 196, 0.45), rgba(78, 205, 196, 0.9)); }
-.zone.normal { flex-basis: 30.56%; background: linear-gradient(90deg, rgba(85, 239, 196, 0.45), rgba(85, 239, 196, 0.9)); }
-.zone.overweight { flex-basis: 22.22%; background: linear-gradient(90deg, rgba(249, 202, 36, 0.45), rgba(249, 202, 36, 0.9)); }
-.zone.obese { flex-basis: 22.22%; background: linear-gradient(90deg, rgba(255, 107, 107, 0.45), rgba(255, 107, 107, 0.9)); }
-
-.gauge-marker {
-  position: absolute;
-  top: -4px;
-  left: 0;
-  width: 20px; height: 20px;
-  border-radius: 50%;
-  background: #ffffff;
-  border: 3px solid var(--accent);
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5), 0 0 0 4px rgba(90, 209, 244, 0.18);
-  transform: translateX(-50%);
-  transition: left 0.55s var(--ease);
-}
-.gauge-scale {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 7px;
-  font-size: 10px;
-  color: var(--text-3);
-  font-variant-numeric: tabular-nums;
-}
-
-/* 位置数据网格 */
-.position-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
-  margin-top: 22px;
-}
-
-.position-card {
-  position: relative;
-  overflow: hidden;
-  padding: 22px 14px;
-  border-radius: var(--r-md);
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--glass-border);
-  transition: all 0.35s ease;
-}
-.position-card:hover { transform: translateY(-3px); background: rgba(255, 255, 255, 0.075); }
-.position-card::after {
-  content: "";
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: 3px;
-  background: transparent;
-  transition: background 0.35s ease;
-}
-.position-card .position-icon {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 8px;
-  color: var(--text-2);
-  transition: color 0.35s ease;
-}
+.position-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 16px; }
+.position-card { position: relative; overflow: hidden; padding: 20px 14px; border-radius: var(--r-md); background: rgba(255,255,255,.05); border: 1px solid var(--glass-border); transition: all .35s ease; text-align: center; }
+.position-card:hover { transform: translateY(-3px); background: rgba(255,255,255,.075); }
+.position-card::after { content:""; position: absolute; inset: 0 0 auto 0; height: 3px; background: transparent; transition: background .35s ease; }
+.position-card .position-icon { display: flex; justify-content: center; margin-bottom: 8px; color: var(--text-2); transition: color .35s ease; }
 .position-card .position-icon svg { width: 22px; height: 22px; }
 .position-title { font-size: 13px; color: var(--text-2); margin-bottom: 8px; }
-.position-value {
-  font-size: 40px;
-  font-weight: 800;
-  color: var(--text-1);
-  line-height: 1.1;
-  font-variant-numeric: tabular-nums;
-}
+.position-value { font-size: 38px; font-weight: 800; color: var(--text-1); line-height: 1.1; font-variant-numeric: tabular-nums; }
 .position-unit { font-size: 14px; color: var(--text-2); margin-left: 2px; }
-
-.card-underweight { border-color: rgba(78, 205, 196, 0.4); background: rgba(78, 205, 196, 0.08); }
+.card-underweight { border-color: rgba(78,205,196,.4); background: rgba(78,205,196,.08); }
 .card-underweight::after { background: var(--thin); }
 .card-underweight .position-icon { color: var(--thin); }
-
-.card-normal { border-color: rgba(85, 239, 196, 0.4); background: rgba(85, 239, 196, 0.08); }
+.card-normal { border-color: rgba(85,239,196,.4); background: rgba(85,239,196,.08); }
 .card-normal::after { background: var(--ok); }
 .card-normal .position-icon { color: var(--ok); }
-
-.card-overweight { border-color: rgba(249, 202, 36, 0.4); background: rgba(249, 202, 36, 0.08); }
+.card-overweight { border-color: rgba(249,202,36,.4); background: rgba(249,202,36,.08); }
 .card-overweight::after { background: var(--warn); }
 .card-overweight .position-icon { color: var(--warn); }
-
-.card-obese { border-color: rgba(255, 107, 107, 0.4); background: rgba(255, 107, 107, 0.08); }
+.card-obese { border-color: rgba(255,107,107,.4); background: rgba(255,107,107,.08); }
 .card-obese::after { background: var(--danger); }
 .card-obese .position-icon { color: var(--danger); }
 
-/* 建议 */
-.pillow-advice {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  margin-top: 18px;
-  padding: 14px 16px;
-  border-radius: var(--r-sm);
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px dashed rgba(255, 255, 255, 0.14);
-  text-align: left;
-  font-size: 14px;
-  color: var(--text-2);
-  line-height: 1.7;
-}
-.pillow-advice svg {
-  width: 18px; height: 18px;
-  flex-shrink: 0;
-  margin-top: 2px;
-  color: var(--accent);
-}
+.pillow-advice { display: flex; align-items: flex-start; gap: 10px; margin-top: 14px; padding: 13px 15px; border-radius: var(--r-sm); background: rgba(255,255,255,.05); border: 1px dashed rgba(255,255,255,.14); text-align: left; font-size: 14px; color: var(--text-2); line-height: 1.7; }
+.pillow-advice svg { width: 18px; height: 18px; flex-shrink: 0; margin-top: 2px; color: var(--accent); }
 
-/* ============================================================
-   参考表
-   ============================================================ */
-.reference {
-  margin-top: 20px;
-  padding: 18px 20px;
-  border-radius: var(--r-md);
-  background: rgba(4, 14, 22, 0.3);
-  border: 1px solid var(--glass-border);
-}
-.reference-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-1);
-  margin-bottom: 8px;
-}
+.reference { margin-top: 14px; padding: 14px 18px; border-radius: var(--r-md); background: rgba(4,14,22,.3); border: 1px solid var(--glass-border); }
+.reference-title { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: var(--text-1); margin-bottom: 8px; }
 .reference-title svg { width: 16px; height: 16px; color: var(--accent); }
-.reference-row {
-  display: flex;
-  justify-content: space-between;
-  padding: 9px 0;
-  font-size: 13px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-}
+.reference-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,.05); }
 .reference-row:last-child { border-bottom: none; }
 .reference-label { color: var(--text-2); }
 .reference-value { font-weight: 600; color: var(--text-1); }
 .reference-value.accent { color: var(--accent); }
 
-/* ============================================================
-   操作栏 & Toast
-   ============================================================ */
-.actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-top: 18px;
-}
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 13px 10px;
-  border-radius: var(--r-sm);
-  border: 1px solid var(--glass-border);
-  background: rgba(255, 255, 255, 0.07);
-  color: var(--text-1);
-  font: inherit;
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-  cursor: pointer;
-  transition: all 0.25s var(--ease);
-}
-.btn svg { width: 17px; height: 17px; }
-.btn:hover { background: rgba(255, 255, 255, 0.12); transform: translateY(-2px); }
-.btn:active { transform: translateY(0) scale(0.98); }
-.btn-primary {
-  border-color: transparent;
-  background: var(--accent-grad);
-  color: #08202c;
-  box-shadow: 0 8px 22px var(--accent-glow);
-}
-.btn-primary:hover { background: var(--accent-grad); filter: brightness(1.08); }
-.btn:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(90, 209, 244, 0.35); }
+.ref { margin-top: 18px; font-size: 12px; color: #5a6b88; line-height: 1.8; }
+.ref b { color: var(--text-2); font-weight: 500; }
+footer { margin-top: 22px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,.08); font-size: 12px; color: #4e5f7e; text-align: center; }
 
-.toast {
-  position: fixed;
-  left: 50%;
-  bottom: 30px;
-  z-index: 20;
-  transform: translate(-50%, 20px);
-  padding: 11px 22px;
-  border-radius: 999px;
-  background: rgba(6, 20, 30, 0.92);
-  border: 1px solid rgba(90, 209, 244, 0.4);
-  color: var(--text-1);
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-  box-shadow: 0 12px 34px rgba(2, 12, 20, 0.5);
-  opacity: 0;
-  pointer-events: none;
-  transition: all 0.35s var(--ease);
-}
+.toast { position: fixed; left: 50%; bottom: 30px; z-index: 20; transform: translate(-50%, 20px); padding: 11px 22px; border-radius: 999px; background: rgba(6,20,30,.92); border: 1px solid rgba(90,209,244,.4); color: var(--text-1); font-size: 14px; font-weight: 600; letter-spacing: .5px; box-shadow: 0 12px 34px rgba(2,12,20,.5); opacity: 0; pointer-events: none; transition: all .35s var(--ease); }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
 /* ============================================================
-   响应式
+   美化增强 v3.1 —— 玻璃拟态深度 + 交互动效
    ============================================================ */
-@media (max-width: 480px) {
-  .card { padding: 28px 22px; }
-  .title { font-size: 24px; }
-  .bmi-value { font-size: 44px; }
-  .position-value { font-size: 32px; }
-  .position-grid { gap: 10px; }
-  .position-card { padding: 18px 10px; }
+
+/* ---- 全局滚动条 & 选区 ---- */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: rgba(255,255,255,.03); border-radius: 8px; }
+::-webkit-scrollbar-thumb { border-radius: 8px; border: 2px solid transparent; background: linear-gradient(180deg, rgba(90,209,244,.4), rgba(143,123,255,.4)) padding-box; }
+::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, rgba(90,209,244,.72), rgba(143,123,255,.72)) padding-box; }
+::selection { background: rgba(90,209,244,.3); color: #fff; }
+
+/* ---- 背景：细网格 + 顶部辉光 ---- */
+body::after {
+  content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(1000px 560px at 50% -10%, rgba(90,209,244,.10), transparent 62%),
+    linear-gradient(rgba(255,255,255,.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.02) 1px, transparent 1px);
+  background-size: 100% 100%, 44px 44px, 44px 44px;
+  -webkit-mask-image: radial-gradient(ellipse 95% 85% at 50% 35%, #000 20%, transparent 96%);
+  mask-image: radial-gradient(ellipse 95% 85% at 50% 35%, #000 20%, transparent 96%);
 }
 
-/* 无障碍：减少动态效果 */
+/* ---- 品牌徽章：流动渐变 ---- */
+.brand-badge {
+  background: linear-gradient(135deg, #5ad1f4, #8f7bff, #5ad1f4);
+  background-size: 220% 220%;
+  animation: gradShift 5s ease-in-out infinite;
+  box-shadow: 0 8px 30px rgba(90,209,244,.4), inset 0 1px 0 rgba(255,255,255,.35);
+}
+@keyframes gradShift { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+
+/* ---- 标题光晕 ---- */
+.title { text-shadow: 0 0 34px rgba(90,209,244,.28); }
+
+/* ---- 页卡：顶部高光线 ---- */
+.page-card::before {
+  content: ""; position: absolute; top: 0; left: 8%; right: 8%; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.5), transparent); opacity: .5;
+  z-index: 2;
+}
+
+/* ---- 标签栏 ---- */
+.tabs { margin-bottom: 16px; }
+.tab { position: relative; overflow: hidden; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.tab svg { transition: transform .3s var(--ease); }
+.tab:hover svg { transform: scale(1.18) rotate(-5deg); }
+.tab.active { animation: tabGlow 2.6s ease-in-out infinite; }
+.tab.active svg { transform: scale(1.08); }
+@keyframes tabGlow { 0%,100% { box-shadow: 0 8px 22px rgba(90,209,244,.35); } 50% { box-shadow: 0 8px 32px rgba(90,209,244,.62), 0 0 0 4px rgba(90,209,244,.08); } }
+
+/* ---- 乙太卡片：顶部高光 + 右上辉光 ---- */
+.card { overflow: hidden; }
+.card::before {
+  content: ""; position: absolute; top: 0; left: 10%; right: 10%; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.6), transparent); z-index: 2;
+}
+.card::after {
+  content: ""; position: absolute; width: 380px; height: 380px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(90,209,244,.15), transparent 68%);
+  top: -150px; right: -130px; pointer-events: none; z-index: 0;
+  animation: breathe 7s ease-in-out infinite;
+}
+@keyframes breathe { 0%,100% { opacity: .65; transform: translate(0,0) scale(1); } 50% { opacity: 1; transform: translate(-20px,16px) scale(1.14); } }
+
+/* ---- 面板：顶部细高光 ---- */
+.panel { position: relative; overflow: hidden; }
+.panel::before { content:""; position:absolute; top:0; left:0; right:0; height:1px; background: linear-gradient(90deg, transparent, rgba(90,209,244,.38), transparent); }
+
+/* ---- 滑杆 ---- */
+input[type="range"] { box-shadow: inset 0 2px 6px rgba(0,0,0,.35); }
+input[type="range"]::-webkit-slider-thumb { box-shadow: 0 0 0 4px rgba(90,209,244,.2), 0 6px 18px rgba(90,209,244,.55); }
+input[type="range"]::-webkit-slider-thumb:hover { box-shadow: 0 0 0 7px rgba(90,209,244,.22), 0 6px 22px rgba(90,209,244,.72); }
+
+/* ---- 数值展示：渐变文字 + 辉光 ---- */
+.value-display .num {
+  background: linear-gradient(180deg, #fff 22%, #bfe9ff 82%);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 14px rgba(90,209,244,.34));
+  transition: filter .3s var(--ease);
+}
+.value-display:hover .num { filter: drop-shadow(0 0 22px rgba(90,209,244,.62)); }
+
+/* ---- 结果盒：内辉光 + 周期扫光 ---- */
+.result-box { position: relative; overflow: hidden; }
+.result-box::after {
+  content: ""; position: absolute; top: 0; bottom: 0; width: 46%; left: -60%;
+  background: linear-gradient(100deg, transparent, rgba(255,255,255,.09), transparent);
+  transform: skewX(-18deg); animation: shine 5.2s ease-in-out infinite; pointer-events: none;
+}
+@keyframes shine { 0%, 55% { left: -60%; } 78%, 100% { left: 135%; } }
+
+/* ---- 款式徽章：扫光 ---- */
+.pillow-model { position: relative; overflow: hidden; box-shadow: 0 0 26px rgba(90,209,244,.18); }
+.pillow-model::after {
+  content: ""; position: absolute; top: 0; bottom: 0; width: 42%; left: -55%;
+  background: linear-gradient(100deg, transparent, rgba(255,255,255,.22), transparent);
+  transform: skewX(-20deg); animation: shine 4.6s ease-in-out infinite; pointer-events: none;
+}
+
+/* ---- BMI 数值 ---- */
+.bmi-value {
+  background: linear-gradient(180deg, #fff, #bfe9ff 72%, #8f7bff);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 16px rgba(90,209,244,.35));
+}
+
+/* ---- 仪表指针：脉冲光环 ---- */
+.gauge-marker::after {
+  content: ""; position: absolute; inset: -6px; border-radius: 50%;
+  border: 2px solid rgba(90,209,244,.5); animation: ringPulse 2.2s ease-out infinite;
+}
+@keyframes ringPulse { 0% { transform: scale(.55); opacity: .9; } 100% { transform: scale(1.75); opacity: 0; } }
+
+/* ---- 位置卡 ---- */
+.position-card { box-shadow: 0 4px 16px rgba(2,12,20,.25); }
+.position-card:hover { box-shadow: 0 16px 38px rgba(2,12,20,.5); }
+.position-card .position-icon { filter: drop-shadow(0 0 8px currentColor); }
+
+/* ---- 建议 ---- */
+.pillow-advice { background: linear-gradient(135deg, rgba(90,209,244,.07), rgba(255,255,255,.03)); border-color: rgba(90,209,244,.22); }
+.pillow-advice svg { filter: drop-shadow(0 0 6px rgba(90,209,244,.6)); }
+
+/* ---- 款式参考表 ---- */
+.reference-row { transition: background .2s, padding-left .2s, padding-right .2s; border-radius: 8px; padding-left: 8px; padding-right: 8px; }
+.reference-row:hover { background: rgba(90,209,244,.07); padding-left: 14px; }
+
+/* ---- 上传区：浮动图标 + 悬停辉光 ---- */
+.upload { position: relative; overflow: hidden; background: linear-gradient(160deg, rgba(90,209,244,.06), rgba(143,123,255,.04)); }
+.upload svg { animation: floatY 2.8s ease-in-out infinite; }
+@keyframes floatY { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+.upload::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .25s;
+  background: radial-gradient(120% 120% at 50% 0%, rgba(90,209,244,.16), transparent 70%);
+}
+.upload:hover::before, .upload.drag::before { opacity: 1; }
+
+/* ---- 自动测量按钮：扫光 ---- */
+.auto-btn { position: relative; overflow: hidden; }
+.auto-btn::after {
+  content: ""; position: absolute; top: 0; bottom: 0; width: 38%; left: -50%;
+  background: linear-gradient(100deg, transparent, rgba(255,255,255,.4), transparent);
+  transform: skewX(-18deg); animation: shine 3.4s ease-in-out infinite; pointer-events: none;
+}
+
+/* ---- 画布：四角括号 + 辉光 ---- */
+.canvas-box::before, .canvas-box::after { content:""; position:absolute; width:22px; height:22px; z-index:2; pointer-events:none; }
+.canvas-box::before { top:8px; left:8px; border-top:2px solid rgba(90,209,244,.72); border-left:2px solid rgba(90,209,244,.72); border-top-left-radius:6px; }
+.canvas-box::after { bottom:8px; right:8px; border-bottom:2px solid rgba(90,209,244,.72); border-right:2px solid rgba(90,209,244,.72); border-bottom-right-radius:6px; }
+.canvas-box { box-shadow: 0 0 30px rgba(90,209,244,.13), inset 0 4px 24px rgba(0,0,0,.45); }
+
+/* ---- 测量卡：有值后高亮 ---- */
+.meas-item:not(.pending) { background: linear-gradient(180deg, rgba(90,209,244,.09), rgba(255,255,255,.02)); box-shadow: 0 0 24px rgba(90,209,244,.13); }
+.meas-item:not(.pending)::before { opacity: 1; }
+
+/* ---- 结果大数字：辉光呼吸 ---- */
+.hero-result .big { animation: numPulse 3.6s ease-in-out infinite; }
+@keyframes numPulse { 0%,100% { text-shadow: 0 0 26px rgba(90,209,244,.4); } 50% { text-shadow: 0 0 42px rgba(90,209,244,.72); } }
+
+/* ---- 主按钮：扫光 ---- */
+.calc-btn { position: relative; overflow: hidden; }
+.calc-btn::after {
+  content: ""; position: absolute; top: 0; bottom: 0; width: 36%; left: -55%;
+  background: linear-gradient(100deg, transparent, rgba(255,255,255,.38), transparent);
+  transform: skewX(-18deg); animation: shine 3.8s ease-in-out infinite; pointer-events: none;
+}
+.calc-btn.ghost::after { display: none; }
+
+/* ---- 复制/重置按钮 ---- */
+.btn { position: relative; overflow: hidden; }
+.btn-primary::after {
+  content: ""; position: absolute; top: 0; bottom: 0; width: 36%; left: -55%;
+  background: linear-gradient(100deg, transparent, rgba(255,255,255,.45), transparent);
+  transform: skewX(-18deg); animation: shine 4s ease-in-out infinite; pointer-events: none;
+}
+
+/* ---- Toast ---- */
+.toast { backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+
+/* ---- X光头部 ---- */
+.xray-head .kicker::before { animation: dotBlink 2s ease-in-out infinite; }
+@keyframes dotBlink { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+
+/* ---- 流程步骤：扫光 ---- */
+.flow .step { position: relative; overflow: hidden; }
+.flow .step::after {
+  content: ""; position: absolute; inset: 0; background: linear-gradient(100deg, transparent, rgba(90,209,244,.2), transparent);
+  transform: translateX(-100%); transition: transform .5s var(--ease);
+}
+.flow .step:hover::after { transform: translateX(100%); }
+
+@media (max-width: 480px) {
+  .page-card { padding: 24px 16px; }
+  .title { font-size: 24px; }
+  .bmi-value { font-size: 38px; }
+  .position-value { font-size: 32px; }
+  .position-grid { gap: 10px; }
+  .position-card { padding: 16px 10px; }
+}
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
 </style>
 </head>
@@ -656,179 +587,347 @@ input[type="range"]::-moz-range-track { height: 8px; border-radius: 6px; backgro
 <div class="orb orb-3" aria-hidden="true"></div>
 <div class="stars" aria-hidden="true"></div>
 
-<div class="card">
+<div class="wrap">
+  <div class="page-card">
 
-  <!-- 品牌徽标 -->
-  <div class="brand">
-    <span class="brand-badge">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 2.5l1.8 5.2 5.2 1.8-5.2 1.8L12 16.5l-1.8-5.2L5 9.5l5.2-1.8z"/>
-        <path d="M19 15l.9 2.6L22.5 18.5l-2.6.9L19 22l-.9-2.6-2.6-.9 2.6-.9z"/>
-      </svg>
-      乙太 · 智眠
-    </span>
-  </div>
-
-  <h1 class="title">智枕定制</h1>
-  <p class="subtitle">基于身高体重，测算最适合您的枕芯参数</p>
-
-  <!-- 身高 -->
-  <div class="input-group">
-    <label class="label" for="height">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-        <circle cx="9" cy="7" r="4"/>
-        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-      </svg>
-      身高
-      <span class="unit-tag">cm</span>
-    </label>
-    <input type="range" id="height" min="150" max="190" value="170" aria-label="身高（厘米）" oninput="onSliderHeight()">
-    <div class="range-hint"><span>150</span><span>190</span></div>
-    <div class="value-display">
-      <button type="button" class="value-chip" id="heightChip" title="点击输入精确数值" aria-label="点击输入身高">
-        <span class="num" id="heightVal">170</span>
-        <svg class="edit-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+    <!-- ============ 品牌头部 ============ -->
+    <div class="brand">
+      <span class="brand-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2.5l1.8 5.2 5.2 1.8-5.2 1.8L12 16.5l-1.8-5.2L5 9.5l5.2-1.8z"/>
+          <path d="M19 15l.9 2.6L22.5 18.5l-2.6.9L19 22l-.9-2.6-2.6-.9 2.6-.9z"/>
         </svg>
-      </button>
-      <input type="number" class="stealth" id="heightInput" min="150" max="190" value="170" hidden aria-label="输入身高数值">
-      <span class="unit">cm</span>
+        乙太 · 智眠
+      </span>
     </div>
-  </div>
+    <h1 class="title">智枕定制</h1>
+    <p class="subtitle">双工具工作台 · 点击上方标签切换</p>
 
-  <!-- 体重 -->
-  <div class="input-group">
-    <label class="label" for="weight">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M6 16.5A3.5 3.5 0 0 0 9.5 20h3A3.5 3.5 0 0 0 16 16.5V12H6v4.5z"/>
-        <path d="M6 12a6 6 0 1 1 12 0"/>
-        <path d="M9.5 8l.5-1h4l.5 1"/>
-      </svg>
-      体重
-      <span class="unit-tag">kg</span>
-    </label>
-    <input type="range" id="weight" min="38" max="108" value="65" aria-label="体重（公斤）" oninput="onSliderWeight()">
-    <div class="range-hint"><span>38</span><span>108</span></div>
-    <div class="value-display">
-      <button type="button" class="value-chip" id="weightChip" title="点击输入精确数值" aria-label="点击输入体重">
-        <span class="num" id="weightVal">65</span>
-        <svg class="edit-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+    <!-- ============ 标签切换栏 ============ -->
+    <div class="tabs" role="tablist">
+      <button class="tab active" id="tabEta" data-view="view-eta" role="tab" aria-selected="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 6H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2z"/><path d="M6 12h12"/>
         </svg>
+        乙太智枕计算器
       </button>
-      <input type="number" class="stealth" id="weightInput" min="38" max="108" value="65" hidden aria-label="输入体重数值">
-      <span class="unit">kg</span>
-    </div>
-  </div>
-
-  <!-- 结果 -->
-  <div class="result-box show theme-normal" id="resultBox">
-
-    <!-- 款式 -->
-    <div class="pillow-model" id="pillowModel">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M18 6H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2z"/>
-        <path d="M6 12h12"/>
-      </svg>
-      <span id="pillowModelText">B款（165-175cm）</span>
+      <button class="tab" id="tabXray" data-view="view-xray" role="tab" aria-selected="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2v4"/><path d="M12 18v4"/><path d="M4.9 4.9l2.8 2.8"/><path d="M16.3 16.3l2.8 2.8"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="M4.9 19.1l2.8-2.8"/><path d="M16.3 7.7l2.8-2.8"/><circle cx="12" cy="12" r="4"/>
+        </svg>
+        X光片枕高建模
+      </button>
     </div>
 
-    <!-- BMI -->
-    <div class="bmi-value"><span id="bmiValue">22.5</span><span class="bmi-unit">BMI</span></div>
-    <div class="bmi-label normal" id="bmiLabel">正常范围</div>
+    <!-- ============ 界面一：乙太智枕计算器 ============ -->
+    <div class="view active" id="view-eta" role="tabpanel">
+      <div class="eta-wrap">
+        <div class="card">
 
-    <!-- BMI 区间仪表条 -->
-    <div class="gauge" aria-hidden="true">
-      <div class="gauge-track">
-        <span class="zone thin">偏瘦</span>
-        <span class="zone normal">正常</span>
-        <span class="zone overweight">超重</span>
-        <span class="zone obese">肥胖</span>
-        <div class="gauge-marker" id="bmiMarker"></div>
-      </div>
-      <div class="gauge-scale"><span>14</span><span>18.5</span><span>24</span><span>28</span><span>32</span></div>
-    </div>
+          <h2 class="title" style="font-size:26px;">乙太智枕定制</h2>
+          <p class="subtitle">基于身高体重，测算最适合您的枕芯参数</p>
 
-    <!-- 位置数据 -->
-    <div class="position-grid">
-      <div class="position-card card-normal" id="neckCard">
-        <div class="position-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 2a4 4 0 0 0-4 4c0 1.1.45 2.1 1.17 2.83A4 4 0 0 0 8 11v1h8v-1a4 4 0 0 0-1.17-2.17A4 4 0 0 0 16 6a4 4 0 0 0-4-4z"/>
-            <path d="M8 15v4a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-4"/>
-          </svg>
+          <!-- 身高 -->
+          <div class="input-group">
+            <label class="label" for="e_height">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+              身高
+              <span class="unit-tag">cm</span>
+            </label>
+            <input type="range" id="e_height" min="150" max="190" value="170" aria-label="身高（厘米）" oninput="e_onSliderHeight()">
+            <div class="range-hint"><span>150</span><span>190</span></div>
+            <div class="value-display">
+              <button type="button" class="value-chip" id="e_heightChip" title="点击输入精确数值" aria-label="点击输入身高">
+                <span class="num" id="e_heightVal">170</span>
+                <svg class="edit-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+              </button>
+              <input type="number" class="stealth" id="e_heightInput" min="150" max="190" value="170" hidden aria-label="输入身高数值">
+              <span class="unit">cm</span>
+            </div>
+          </div>
+
+          <!-- 体重 -->
+          <div class="input-group">
+            <label class="label" for="e_weight">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M6 16.5A3.5 3.5 0 0 0 9.5 20h3A3.5 3.5 0 0 0 16 16.5V12H6v4.5z"/><path d="M6 12a6 6 0 1 1 12 0"/><path d="M9.5 8l.5-1h4l.5 1"/>
+              </svg>
+              体重
+              <span class="unit-tag">kg</span>
+            </label>
+            <input type="range" id="e_weight" min="38" max="108" value="65" aria-label="体重（公斤）" oninput="e_onSliderWeight()">
+            <div class="range-hint"><span>38</span><span>108</span></div>
+            <div class="value-display">
+              <button type="button" class="value-chip" id="e_weightChip" title="点击输入精确数值" aria-label="点击输入体重">
+                <span class="num" id="e_weightVal">65</span>
+                <svg class="edit-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+              </button>
+              <input type="number" class="stealth" id="e_weightInput" min="38" max="108" value="65" hidden aria-label="输入体重数值">
+              <span class="unit">kg</span>
+            </div>
+          </div>
+
+          <!-- 结果 -->
+          <div class="result-box theme-normal" id="e_resultBox">
+            <div class="pillow-model" id="e_pillowModel">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 6H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2z"/><path d="M6 12h12"/>
+              </svg>
+              <span id="e_pillowModelText">B款（165-175cm）</span>
+            </div>
+
+            <div class="theta-row" style="justify-content:center;">
+              <span class="bmi-value" id="e_bmiValue">22.5</span><span class="bmi-unit">BMI</span>
+            </div>
+            <div class="bmi-label normal" id="e_bmiLabel">正常范围</div>
+
+            <div class="gauge" aria-hidden="true">
+              <div class="gauge-track">
+                <span class="zone thin">偏瘦</span>
+                <span class="zone normal">正常</span>
+                <span class="zone overweight">超重</span>
+                <span class="zone obese">肥胖</span>
+                <div class="gauge-marker" id="e_bmiMarker"></div>
+              </div>
+              <div class="gauge-scale"><span>14</span><span>18.5</span><span>24</span><span>28</span><span>32</span></div>
+            </div>
+
+            <div class="position-grid">
+              <div class="position-card card-normal" id="e_neckCard">
+                <div class="position-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2a4 4 0 0 0-4 4c0 1.1.45 2.1 1.17 2.83A4 4 0 0 0 8 11v1h8v-1a4 4 0 0 0-1.17-2.17A4 4 0 0 0 16 6a4 4 0 0 0-4-4z"/><path d="M8 15v4a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-4"/>
+                  </svg>
+                </div>
+                <div class="position-title">颈椎支撑位置</div>
+                <div class="position-value"><span id="e_neckPos">3</span><span class="position-unit">mm</span></div>
+              </div>
+              <div class="position-card card-normal" id="e_headCard">
+                <div class="position-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18z"/>
+                  </svg>
+                </div>
+                <div class="position-title">头部下沉位置</div>
+                <div class="position-value"><span id="e_headPos">3</span><span class="position-unit">mm</span></div>
+              </div>
+            </div>
+
+            <div class="pillow-advice" id="e_pillowAdvice">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              <span id="e_pillowAdviceText">该参数基于您的体型数据粗略计算，能有效支撑颈椎曲度。</span>
+            </div>
+          </div>
+
+          <!-- 款式参考 -->
+          <div class="reference">
+            <div class="reference-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+              </svg>
+              款式参考表
+            </div>
+            <div class="reference-row"><span class="reference-label">A款</span><span class="reference-value accent">150 - 164 cm</span></div>
+            <div class="reference-row"><span class="reference-label">B款</span><span class="reference-value accent">165 - 175 cm</span></div>
+            <div class="reference-row"><span class="reference-label">C款</span><span class="reference-value accent">176 - 190 cm</span></div>
+          </div>
+
+          <!-- 操作栏 -->
+          <div class="actions">
+            <button type="button" class="btn btn-primary" id="e_copyBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+              </svg>
+              复制结果
+            </button>
+            <button type="button" class="btn" id="e_resetBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>
+              </svg>
+              重置
+            </button>
+          </div>
+
         </div>
-        <div class="position-title">颈椎支撑位置</div>
-        <div class="position-value"><span id="neckPos">3</span><span class="position-unit">mm</span></div>
       </div>
-      <div class="position-card card-normal" id="headCard">
-        <div class="position-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="9"/>
-            <path d="M3 12h18"/>
-            <path d="M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18z"/>
-          </svg>
+    </div>
+
+    <!-- ============ 界面二：X光片枕高建模 ============ -->
+    <div class="view" id="view-xray" role="tabpanel">
+
+      <div class="xray-head">
+        <span class="kicker">颈椎枕 · 轻量化建模工具</span>
+        <h2>X光片枕高建模</h2>
+        <p class="sub">上传颈椎侧位 X 光片自动测量，结合基本参数预测推荐枕高</p>
+        <div class="flow">
+          <span class="step">上传X光片</span><span class="arr">→</span>
+          <span class="step">一键自动测量 · 自动标注</span><span class="arr">→</span>
+          <span class="step">可拖动微调复核</span><span class="arr">→</span>
+          <span class="step">填基本参数 · 预测枕高</span>
         </div>
-        <div class="position-title">头部下沉位置</div>
-        <div class="position-value"><span id="headPos">3</span><span class="position-unit">mm</span></div>
+      </div>
+
+      <div class="grid">
+
+        <!-- 左栏：X光测量 -->
+        <section class="panel">
+          <div class="panel-title"><span class="dot"></span>X光片自动测量</div>
+
+          <div class="upload" id="uploadBox">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 16V4"/><path d="M7 9l5-5 5 5"/>
+              <path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>
+            </svg>
+            <div class="u-main">点击或拖拽上传颈椎侧位 X 光片</div>
+            <div class="u-sub">支持 JPG / PNG · 侧位片效果最佳</div>
+          </div>
+          <input type="file" class="file-input" id="fileInput" accept="image/jpeg,image/png,image/webp">
+
+          <div class="stage" id="stage" style="display:none;">
+            <div class="auto-bar">
+              <button class="auto-btn" id="autoBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9"/><path d="M21 3v6h-6"/></svg>
+                自动测量并标注
+              </button>
+              <span class="auto-note">上传后点击此按钮，自动完成 Cobb 角与 Borden 值测量</span>
+            </div>
+            <div class="auto-status" id="autoStatus"></div>
+
+            <div class="modes">
+              <span style="font-size:12px;color:var(--text-3);align-self:center;">复核/微调：</span>
+              <button class="mode calib-mode" data-mode="calib">标尺校准</button>
+              <button class="mode" data-mode="cobb">Cobb角点</button>
+              <button class="mode borden-mode" data-mode="borden">Borden值点</button>
+              <button class="mode" data-action="undo">撤销</button>
+              <button class="mode danger" data-action="clear">清空标注</button>
+              <button class="mode danger" data-action="reset">换图</button>
+            </div>
+            <div class="guide" id="guide"></div>
+            <div class="canvas-box" id="canvasBox">
+              <canvas id="canvas"></canvas>
+              <div class="canvas-empty" id="emptyTip">上传后点击「自动测量」</div>
+            </div>
+
+            <div class="meas">
+              <div class="meas-item pending" id="measCobb">
+                <div class="lbl">Cobb 角（C2–C7 终板夹角）</div>
+                <div class="val" id="cobbVal">未测量</div>
+              </div>
+              <div class="meas-item pending" id="measBorden">
+                <div class="lbl">Borden 值（颈椎生理曲度）</div>
+                <div class="val" id="bordenVal">未测量</div>
+              </div>
+            </div>
+            <div class="scale-hint" id="scaleHint"></div>
+            <div class="anat-ref" id="anatRefBox" style="display:none">
+              <span>C2-C7 后缘参考长度</span>
+              <input type="number" id="anatRef" value="100" min="50" max="160" step="5">
+              <span>mm</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- 右栏：参数与建模 -->
+        <section>
+          <div class="panel">
+            <div class="panel-title"><span class="dot teal"></span>基本参数</div>
+            <div class="inline2">
+              <div class="field">
+                <label for="age">年龄（岁）</label>
+                <div class="row"><input type="number" id="age" min="10" max="90" step="1" placeholder="如 28"><span class="unit">岁</span></div>
+              </div>
+              <div class="field">
+                <label for="height">身高（cm）</label>
+                <div class="row"><input type="number" id="height" min="100" max="220" step="0.5" placeholder="如 168"><span class="unit">cm</span></div>
+              </div>
+            </div>
+            <div class="field">
+              <label for="weight">体重（kg）</label>
+              <div class="row"><input type="number" id="weight" min="30" max="150" step="0.5" placeholder="如 60"><span class="unit">kg</span></div>
+            </div>
+            <div class="bmi-readout" id="bmiReadout"></div>
+
+            <details class="manual">
+              <summary><span class="tw">›</span> 手动输入 Cobb 角与 Borden 值（跳过 X 光测量）</summary>
+              <div class="inner inline2">
+                <div class="field">
+                  <label for="mCobb">Cobb 角（°）</label>
+                  <input type="number" id="mCobb" min="0" max="60" step="0.1" placeholder="如 12.5">
+                </div>
+                <div class="field">
+                  <label for="mBorden">Borden 值（mm）</label>
+                  <input type="number" id="mBorden" min="0" max="20" step="0.1" placeholder="如 6.0">
+                </div>
+              </div>
+            </details>
+
+            <button class="calc-btn" id="calcBtn">计算推荐枕高</button>
+            <button class="calc-btn ghost" id="clearAllBtn">一键清除数据</button>
+          </div>
+
+          <div class="panel result" id="resultCard">
+            <div class="panel-title"><span class="dot green"></span>推荐枕高</div>
+            <div class="hero-result">
+              <div class="big" id="rHeight">-- <small>mm</small></div>
+              <div class="cap">基于上述参数的模型预测结果</div>
+            </div>
+            <div class="formula" id="formulaBox"></div>
+            <div class="notice" id="noticeBox"></div>
+            <button class="calc-btn ghost" id="copyBtn">复制数据</button>
+            <div class="manual-copy" id="manualCopy" style="display:none">
+              <div class="mc-tip">系统剪贴板被拦截，请手动全选下方文本后按 Ctrl+C 复制（或长按选择后复制）：</div>
+              <textarea id="manualCopyText" readonly rows="8" onclick="this.select()"></textarea>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div class="ref">
+        <b>自动测量说明：</b>自动检测基于图像处理对颈椎侧位片的椎体后缘与终板进行识别估计，用于科研演示与辅助测量。Cobb 角采用三级策略：①终板清晰时直接测量；②终板较弱时低置信度估计；③终板被遮挡/模糊时由后缘生理曲度推算模糊估计。Borden 值自动换算为毫米：片上含刻度条时自动识别刻度（最精确）；无刻度时按 C2-C7 后缘参考长度做解剖估算（默认 100 mm，可调整，误差约 ±20%）。解剖估算仅供初步参考，若已知片上真实距离，用「标尺校准」点两个点输入长度可获得更精确结果。不同拍摄条件可能影响精度，临床定制请以专业医生测量为准。模型系数与公式取自论文 PPT。
       </div>
     </div>
 
-    <!-- 建议 -->
-    <div class="pillow-advice" id="pillowAdvice">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-      </svg>
-      <span id="pillowAdviceText">该参数基于您的体型数据粗略计算，能有效支撑颈椎曲度。</span>
-    </div>
-  </div>
+    <footer>数据在本地浏览器中计算，不经过任何服务器。影像资料仅用于当次测量。</footer>
 
-  <!-- 款式参考 -->
-  <div class="reference">
-    <div class="reference-title">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="3" y="4" width="18" height="18" rx="2"/>
-        <line x1="16" y1="2" x2="16" y2="6"/>
-        <line x1="8" y1="2" x2="8" y2="6"/>
-        <line x1="3" y1="10" x2="21" y2="10"/>
-      </svg>
-      款式参考表
-    </div>
-    <div class="reference-row"><span class="reference-label">A款</span><span class="reference-value accent">150 - 164 cm</span></div>
-    <div class="reference-row"><span class="reference-label">B款</span><span class="reference-value accent">165 - 175 cm</span></div>
-    <div class="reference-row"><span class="reference-label">C款</span><span class="reference-value accent">176 - 190 cm</span></div>
   </div>
-
-  <!-- 操作栏 -->
-  <div class="actions">
-    <button type="button" class="btn btn-primary" id="copyBtn">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="9" y="9" width="13" height="13" rx="2"/>
-        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-      </svg>
-      复制结果
-    </button>
-    <button type="button" class="btn" id="resetBtn">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M3 12a9 9 0 1 0 3-6.7L3 8"/>
-        <path d="M3 3v5h5"/>
-      </svg>
-      重置
-    </button>
-  </div>
-
 </div>
 
-<!-- Toast -->
-<div class="toast" id="toast">已复制到剪贴板</div>
+<!-- Toast（乙太计算器） -->
+<div class="toast" id="e_toast">已复制到剪贴板</div>
+<script>
+/* ============================================================
+   标签切换
+   ============================================================ */
+(function () {
+  var tabs = Array.prototype.slice.call(document.querySelectorAll('.tab'));
+  var views = Array.prototype.slice.call(document.querySelectorAll('.view'));
+  function switchView(name) {
+    views.forEach(function (v) { v.classList.toggle('active', v.id === name); });
+    tabs.forEach(function (t) {
+      var on = t.getAttribute('data-view') === name;
+      t.classList.toggle('active', on);
+      t.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+  }
+  tabs.forEach(function (t) {
+    t.addEventListener('click', function () { switchView(t.getAttribute('data-view')); });
+  });
+})();
+</script>
 
 <script>
+/* ============================================================
+   界面一：乙太智枕计算器（独立）
+   ============================================================ */
+(function () {
+'use strict';
+
 // ============================================================
 // 完整数据表：身高 -> { model, w:[偏瘦,正常,超重,肥胖], n:[颈椎位置], h:[头部位置] }
 // ============================================================
-const pillowData = {
+var pillowData = {
   150:{model:'A款',w:[16.9,22.2,25.8,30.2],n:[1,1,2,3],h:[1,1,2,3]},
   151:{model:'A款',w:[17.1,21.9,25.9,29.8],n:[1,1,2,3],h:[1,1,2,3]},
   152:{model:'A款',w:[16.9,22.1,26.0,29.9],n:[1,1,2,3],h:[1,2,3,4]},
@@ -872,218 +971,182 @@ const pillowData = {
   190:{model:'C款',w:[16.9,21.9,26.0,29.9],n:[8,9,10,11],h:[7,8,9,10]}
 };
 
-const bmiClasses    = ['偏瘦', '正常', '超重', '肥胖'];
-const rangeMap      = { 'A款': '150-164cm', 'B款': '165-175cm', 'C款': '176-190cm' };
-const adviceMap     = {
+var bmiClasses = ['偏瘦', '正常', '超重', '肥胖'];
+var rangeMap = { 'A款': '150-164cm', 'B款': '165-175cm', 'C款': '176-190cm' };
+var adviceMap = {
   '偏瘦': '偏瘦体型：枕芯位置下调 1mm，提供更贴合的支撑。',
   '正常': '标准体型：枕芯参数无需调整，享受最佳支撑体验。',
   '超重': '超重体型：枕芯位置上移 1mm，建议配合侧卧睡姿。',
   '肥胖': '肥胖体型：枕芯位置上移 2mm，加强颈部支撑力度。'
 };
-
-/* 体型 -> CSS 类名 / 主题 / 颜色 映射 */
-const CLASS_META = {
-  '偏瘦': { css: 'underweight', theme: 'theme-thin',  color: '#4ecdc4' },
-  '正常': { css: 'normal',      theme: 'theme-normal', color: '#55efc4' },
-  '超重': { css: 'overweight',  theme: 'theme-overweight', color: '#f9ca24' },
-  '肥胖': { css: 'obese',       theme: 'theme-obese',  color: '#ff6b6b' }
+var CLASS_META = {
+  '偏瘦': { css: 'underweight', color: '#4ecdc4' },
+  '正常': { css: 'normal', color: '#55efc4' },
+  '超重': { css: 'overweight', color: '#f9ca24' },
+  '肥胖': { css: 'obese', color: '#ff6b6b' }
 };
 
 // ============================================================
 // DOM 引用 & 工具函数
 // ============================================================
-const $ = (id) => document.getElementById(id);
-const height = $('height');
-const weight = $('weight');
+function e$(id) { return document.getElementById(id); }
+var e_height = e$('e_height');
+var e_weight = e$('e_weight');
 
-/* 依据 BMI 返回体型分类索引：0=偏瘦 1=正常 2=超重 3=肥胖 */
 function getBmiClassIndex(bmi) {
   if (bmi < 18.5) return 0;
-  if (bmi < 24)   return 1;
-  if (bmi < 28)   return 2;
+  if (bmi < 24) return 1;
+  if (bmi < 28) return 2;
   return 3;
 }
 
-/* 同步滑杆填充进度 + 刻度 */
 function syncFill(slider) {
-  const min = parseFloat(slider.min);
-  const max = parseFloat(slider.max);
-  const pct = ((parseFloat(slider.value) - min) / (max - min)) * 100;
+  var min = parseFloat(slider.min), max = parseFloat(slider.max);
+  var pct = ((parseFloat(slider.value) - min) / (max - min)) * 100;
   slider.style.background =
-    `linear-gradient(to right, #5ad1f4 0%, #8f7bff ${pct}%, rgba(255,255,255,0.08) ${pct}%, rgba(255,255,255,0.08) 100%), ` +
-    `repeating-linear-gradient(to right, rgba(255,255,255,0.10) 0 1px, transparent 1px 25px)`;
+    'linear-gradient(to right, #5ad1f4 0%, #8f7bff ' + pct + '%, rgba(255,255,255,.08) ' + pct + '%, rgba(255,255,255,.08) 100%), ' +
+    'repeating-linear-gradient(to right, rgba(255,255,255,.10) 0 1px, transparent 1px 25px)';
 }
 
-/* 数值滚动动画 */
-function animateNum(el, to, decimals = 0) {
-  const from = (el._val !== undefined ? el._val : parseFloat(el.textContent)) || 0;
-  if (Math.abs(from - to) < 0.05) {
-    el.textContent = to.toFixed(decimals);
-    el._val = to;
-    return;
-  }
-  const dur = 380, t0 = performance.now();
-  const ease = (t) => 1 - Math.pow(1 - t, 3);
-  const step = (now) => {
-    const p = Math.min(1, (now - t0) / dur);
+function animateNum(el, to, decimals) {
+  var from = (el._val !== undefined ? el._val : parseFloat(el.textContent)) || 0;
+  if (Math.abs(from - to) < 0.05) { el.textContent = to.toFixed(decimals); el._val = to; return; }
+  var dur = 380, t0 = performance.now();
+  var ease = function (t) { return 1 - Math.pow(1 - t, 3); };
+  function step(now) {
+    var p = Math.min(1, (now - t0) / dur);
     el.textContent = (from + (to - from) * ease(p)).toFixed(decimals);
-    if (p < 1) requestAnimationFrame(step);
-    else el._val = to;
-  };
+    if (p < 1) requestAnimationFrame(step); else el._val = to;
+  }
   requestAnimationFrame(step);
 }
 
-/* 通用：点击数值直输（绑定一个滑杆） */
 function bindDirectInput(chipId, inputId, slider, onCommit) {
-  const chip = $(chipId), input = $(inputId);
-  const open = () => {
+  var chip = e$(chipId), input = e$(inputId);
+  function open() {
     input.value = slider.value;
-    // 让输入框与数值按钮等宽，编辑时保持原位不跳动
     input.style.width = chip.getBoundingClientRect().width + 'px';
-    chip.hidden = true;
-    input.hidden = false;
-    input.focus();
-    input.select();
-  };
-  const close = () => {
-    input.hidden = true;
-    chip.hidden = false;
-  };
+    chip.hidden = true; input.hidden = false;
+    input.focus(); input.select();
+  }
+  function close() { input.hidden = true; chip.hidden = false; }
   chip.addEventListener('click', open);
-  input.addEventListener('keydown', (e) => {
+  input.addEventListener('keydown', function (e) {
     if (e.key === 'Enter') input.blur();
     if (e.key === 'Escape') { close(); slider.focus(); }
   });
-  input.addEventListener('blur', () => {
-    let v = parseInt(input.value, 10);
+  input.addEventListener('blur', function () {
+    var v = parseInt(input.value, 10);
     if (isNaN(v)) v = parseInt(slider.value, 10);
     v = Math.max(parseInt(slider.min, 10), Math.min(parseInt(slider.max, 10), v));
-    slider.value = v;
-    close();
-    onCommit(v);
+    slider.value = v; close(); onCommit(v);
   });
 }
 
 // ============================================================
-// 滑杆事件
+// 滑杆事件（供 inline oninput 调用，保持全局）
 // ============================================================
-function onSliderHeight() {
-  $('heightVal').textContent = height.value;
-  $('heightVal')._val = parseInt(height.value, 10);
-  syncFill(height);
+window.e_onSliderHeight = function () {
+  e$('e_heightVal').textContent = e_height.value;
+  e$('e_heightVal')._val = parseInt(e_height.value, 10);
+  syncFill(e_height);
   updatePillow();
-}
-function onSliderWeight() {
-  $('weightVal').textContent = weight.value;
-  $('weightVal')._val = parseInt(weight.value, 10);
-  syncFill(weight);
+};
+window.e_onSliderWeight = function () {
+  e$('e_weightVal').textContent = e_weight.value;
+  e$('e_weightVal')._val = parseInt(e_weight.value, 10);
+  syncFill(e_weight);
   updatePillow();
-}
+};
 
-bindDirectInput('heightChip', 'heightInput', height, (v) => {
-  $('heightVal').textContent = v;
-  $('heightVal')._val = v;
-  syncFill(height);
-  updatePillow();
+bindDirectInput('e_heightChip', 'e_heightInput', e_height, function (v) {
+  e$('e_heightVal').textContent = v; e$('e_heightVal')._val = v;
+  syncFill(e_height); updatePillow();
 });
-bindDirectInput('weightChip', 'weightInput', weight, (v) => {
-  $('weightVal').textContent = v;
-  $('weightVal')._val = v;
-  syncFill(weight);
-  updatePillow();
+bindDirectInput('e_weightChip', 'e_weightInput', e_weight, function (v) {
+  e$('e_weightVal').textContent = v; e$('e_weightVal')._val = v;
+  syncFill(e_weight); updatePillow();
 });
 
 // ============================================================
 // 核心计算
 // ============================================================
 function updatePillow() {
-  const h = parseInt(height.value, 10);
-  const w = parseInt(weight.value, 10);
-  const bmi = w / ((h / 100) ** 2);
-
-  const data = pillowData[h];
+  var h = parseInt(e_height.value, 10);
+  var w = parseInt(e_weight.value, 10);
+  var bmi = w / Math.pow(h / 100, 2);
+  var data = pillowData[h];
   if (!data) return;
 
-  const classIdx = getBmiClassIndex(bmi);
-  const bmiClass = bmiClasses[classIdx];
-  const meta     = CLASS_META[bmiClass];
-  const neckPos  = data.n[classIdx];
-  const headPos  = data.h[classIdx];
-  const bmiStr   = bmi.toFixed(1);
+  var classIdx = getBmiClassIndex(bmi);
+  var bmiClass = bmiClasses[classIdx];
+  var meta = CLASS_META[bmiClass];
+  var neckPos = data.n[classIdx];
+  var headPos = data.h[classIdx];
+  var bmiStr = bmi.toFixed(1);
 
-  // 款式徽章（变化时弹跳）
-  const modelEl = $('pillowModel');
-  const newText = data.model + '（' + rangeMap[data.model] + '）';
+  var modelEl = e$('e_pillowModel');
+  var newText = data.model + '（' + rangeMap[data.model] + '）';
   if (modelEl._t && modelEl._t !== newText) {
-    modelEl.classList.remove('pop');
-    void modelEl.offsetWidth;
-    modelEl.classList.add('pop');
+    modelEl.classList.remove('pop'); void modelEl.offsetWidth; modelEl.classList.add('pop');
   }
   modelEl._t = newText;
-  $('pillowModelText').textContent = newText;
+  e$('e_pillowModelText').textContent = newText;
 
-  // BMI 数值 + 标签
-  animateNum($('bmiValue'), parseFloat(bmiStr), 1);
-  const bmiLabel = $('bmiLabel');
+  animateNum(e$('e_bmiValue'), parseFloat(bmiStr), 1);
+  var bmiLabel = e$('e_bmiLabel');
   bmiLabel.classList.remove('underweight', 'normal', 'overweight', 'obese');
   bmiLabel.textContent = bmiClass + '范围';
   bmiLabel.classList.add(meta.css);
 
-  // BMI 区间仪表条
-  const marker = $('bmiMarker');
-  const pct = Math.max(0, Math.min(100, ((bmi - 14) / 18) * 100));
+  var marker = e$('e_bmiMarker');
+  var pct = Math.max(0, Math.min(100, ((bmi - 14) / 18) * 100));
   marker.style.left = pct + '%';
 
-  // 位置数据
-  animateNum($('neckPos'), neckPos, 0);
-  animateNum($('headPos'), headPos, 0);
+  animateNum(e$('e_neckPos'), neckPos, 0);
+  animateNum(e$('e_headPos'), headPos, 0);
+  e$('e_pillowAdviceText').textContent = adviceMap[bmiClass];
 
-  // 建议文案
-  $('pillowAdviceText').textContent = adviceMap[bmiClass];
-
-  // 结果容器与位置卡片配色
-  const box = $('resultBox');
+  var box = e$('e_resultBox');
   box.classList.remove('theme-thin', 'theme-normal', 'theme-overweight', 'theme-obese');
-  box.classList.add(meta.theme);
-  const cardCls = 'position-card card-' + meta.css;
-  $('neckCard').className = cardCls;
-  $('headCard').className = cardCls;
+  box.classList.add('theme-' + meta.css);
+  var cardCls = 'position-card card-' + meta.css;
+  e$('e_neckCard').className = cardCls;
+  e$('e_headCard').className = cardCls;
 }
 
 // ============================================================
 // 复制 / 重置
 // ============================================================
-let toastTimer = null;
+var toastTimer = null;
 function showToast(msg) {
-  const t = $('toast');
+  var t = e$('e_toast');
   t.textContent = msg;
   t.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('show'), 2000);
+  toastTimer = setTimeout(function () { t.classList.remove('show'); }, 2000);
 }
 
-$('copyBtn').addEventListener('click', () => {
-  const h = parseInt(height.value, 10);
-  const w = parseInt(weight.value, 10);
-  const bmi = (w / ((h / 100) ** 2)).toFixed(1);
-  const data = pillowData[h];
+e$('e_copyBtn').addEventListener('click', function () {
+  var h = parseInt(e_height.value, 10);
+  var w = parseInt(e_weight.value, 10);
+  var bmi = (w / Math.pow(h / 100, 2)).toFixed(1);
+  var data = pillowData[h];
   if (!data) return;
-  const cls = bmiClasses[getBmiClassIndex(bmi)];
-  const text = [
+  var cls = bmiClasses[getBmiClassIndex(bmi)];
+  var text = [
     '【乙太智枕定制】',
-    `身高 ${h}cm · 体重 ${w}kg`,
-    `推荐款式：${data.model}（${rangeMap[data.model]}）`,
-    `BMI ${bmi}`,
-    `颈椎支撑 ${data.n[getBmiClassIndex(bmi)]}mm ｜ 头部下沉 ${data.h[getBmiClassIndex(bmi)]}mm`,
+    '身高 ' + h + 'cm · 体重 ' + w + 'kg',
+    '推荐款式：' + data.model + '（' + rangeMap[data.model] + '）',
+    'BMI ' + bmi,
+    '颈椎支撑 ' + data.n[getBmiClassIndex(bmi)] + 'mm ｜ 头部下沉 ' + data.h[getBmiClassIndex(bmi)] + 'mm',
     adviceMap[cls]
   ].join('\n');
 
-  const done = () => showToast('已复制到剪贴板');
-
-  /* 兼容：优先 Clipboard API；被浏览器（如 file:// 环境）拒绝时降级为 execCommand */
-  const fallback = () => {
+  var done = function () { showToast('已复制到剪贴板'); };
+  var fallback = function () {
     try {
-      const ta = document.createElement('textarea');
+      var ta = document.createElement('textarea');
       ta.value = text;
       ta.style.cssText = 'position:fixed;opacity:0;pointer-events:none;';
       document.body.appendChild(ta);
@@ -1091,32 +1154,1170 @@ $('copyBtn').addEventListener('click', () => {
       document.execCommand('copy');
       ta.remove();
       done();
-    } catch (e) {
-      showToast('复制失败，请手动选择');
-    }
+    } catch (e) { showToast('复制失败，请手动选择'); }
   };
-
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(text).then(done, fallback);
-  } else {
-    fallback();
-  }
+  } else fallback();
 });
 
-$('resetBtn').addEventListener('click', () => {
-  height.value = 170;
-  weight.value = 65;
-  onSliderHeight();
-  onSliderWeight();
+e$('e_resetBtn').addEventListener('click', function () {
+  e_height.value = 170;
+  e_weight.value = 65;
+  e_onSliderHeight();
+  e_onSliderWeight();
   showToast('已恢复默认参数');
 });
 
 // ============================================================
 // 初始化
 // ============================================================
-syncFill(height);
-syncFill(weight);
+syncFill(e_height);
+syncFill(e_weight);
 updatePillow();
+
+})();
+</script>
+<script>
+
+(function () {
+  'use strict';
+
+  // ===== 模型系数 =====
+  var B0 = 47.65, B1 = 1.88, B2 = 2.17, B3 = 0.13, B4 = 0.58, B5 = -0.031, B6 = -0.051;
+
+  // ===== DOM =====
+  var uploadBox = document.getElementById('uploadBox');
+  var fileInput = document.getElementById('fileInput');
+  var stage = document.getElementById('stage');
+  var canvasBox = document.getElementById('canvasBox');
+  var canvas = document.getElementById('canvas');
+  var ctx = canvas.getContext('2d');
+  var emptyTip = document.getElementById('emptyTip');
+  var guide = document.getElementById('guide');
+  var cobbVal = document.getElementById('cobbVal');
+  var bordenVal = document.getElementById('bordenVal');
+  var measCobb = document.getElementById('measCobb');
+  var measBorden = document.getElementById('measBorden');
+  var scaleHint = document.getElementById('scaleHint');
+  var autoBtn = document.getElementById('autoBtn');
+  var autoStatus = document.getElementById('autoStatus');
+  var ageIn = document.getElementById('age');
+  var heightIn = document.getElementById('height');
+  var weightIn = document.getElementById('weight');
+  var bmiReadout = document.getElementById('bmiReadout');
+  var mCobb = document.getElementById('mCobb');
+  var mBorden = document.getElementById('mBorden');
+  var calcBtn = document.getElementById('calcBtn');
+  var resultCard = document.getElementById('resultCard');
+  var rHeight = document.getElementById('rHeight');
+  var formulaBox = document.getElementById('formulaBox');
+  var noticeBox = document.getElementById('noticeBox');
+
+  // ===== 状态 =====
+  var MODE = { CALIB: 'calib', COBB: 'cobb', BORDEN: 'borden' };
+  var state = {
+    img: null,
+    mode: null,
+    calibPts: [], calibLen: null, scale: null,
+    cobbPts: [], bordenPts: [], curve: [],
+    scaleAuto: null, anatRefMm: 100,
+    autoDone: false
+  };
+  var redrawQueued = false;
+  var drag = null; // {type, idx}
+
+  // ===== 上传 =====
+  uploadBox.addEventListener('click', function () { fileInput.click(); });
+  uploadBox.addEventListener('dragover', function (e) { e.preventDefault(); uploadBox.classList.add('drag'); });
+  uploadBox.addEventListener('dragleave', function () { uploadBox.classList.remove('drag'); });
+  uploadBox.addEventListener('drop', function (e) {
+    e.preventDefault(); uploadBox.classList.remove('drag');
+    if (e.dataTransfer.files.length) loadFile(e.dataTransfer.files[0]);
+  });
+  fileInput.addEventListener('change', function () {
+    if (fileInput.files.length) loadFile(fileInput.files[0]);
+  });
+
+  function loadFile(file) {
+    if (!file.type.match(/^image\//)) { alert('请选择图片文件'); return; }
+    var reader = new FileReader();
+    reader.onload = function (ev) {
+      var img = new Image();
+      img.onload = function () {
+        state.img = img;
+        state.calibPts = []; state.cobbPts = []; state.bordenPts = []; state.curve = [];
+        state.calibLen = null; state.scale = null; state.scaleAuto = null; state.autoDone = false;
+        anatRefBox.style.display = 'none';
+        resetReadouts();
+        fitCanvas(img);
+        uploadBox.style.display = 'none';
+        stage.style.display = 'block';
+        autoStatus.style.display = 'none';
+        setMode(MODE.CALIB);
+        redraw();
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function fitCanvas(img) {
+    // 内部分辨率独立于显示尺寸：原图等比缩放到最长边 ≤ 900px，保证测量精度且性能可控；CSS width:100% 负责显示缩放
+    var maxDim = 900;
+    var s = Math.min(1, maxDim / Math.max(img.width, img.height));
+    canvas.width = Math.max(Math.round(img.width * s), 1);
+    canvas.height = Math.max(Math.round(img.height * s), 1);
+  }
+
+  // ===== 模式 =====
+  var modeBtns = Array.prototype.slice.call(document.querySelectorAll('.mode[data-mode]'));
+  var actionBtns = Array.prototype.slice.call(document.querySelectorAll('.mode[data-action]'));
+  modeBtns.forEach(function (btn) {
+    btn.addEventListener('click', function () { setMode(btn.getAttribute('data-mode')); });
+  });
+  actionBtns.forEach(function (btn) {
+    btn.addEventListener('click', function () { doAction(btn.getAttribute('data-action')); });
+  });
+
+  function setMode(m) {
+    state.mode = m;
+    modeBtns.forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-mode') === m); });
+    updateGuide(); redraw();
+  }
+
+  function doAction(a) {
+    if (a === 'undo') {
+      if (state.mode === MODE.CALIB) state.calibPts.pop();
+      else if (state.mode === MODE.COBB) state.cobbPts.pop();
+      else if (state.mode === MODE.BORDEN) state.bordenPts.pop();
+    } else if (a === 'clear') {
+      if (state.mode === MODE.CALIB) { state.calibPts = []; state.calibLen = null; state.scale = null; }
+      else if (state.mode === MODE.COBB) state.cobbPts = [];
+      else if (state.mode === MODE.BORDEN) state.bordenPts = [];
+    } else if (a === 'reset') { resetAll(); return; }
+    updateGuide(); recompute(); redraw();
+  }
+
+  function resetAll() {
+    state.img = null; state.calibPts = []; state.cobbPts = []; state.bordenPts = []; state.curve = [];
+    state.calibLen = null; state.scale = null; state.scaleAuto = null; state.autoDone = false;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    canvas.width = 1; canvas.height = 1;
+    stage.style.display = 'none'; uploadBox.style.display = '';
+    resetReadouts(); guide.textContent = ''; scaleHint.textContent = '';
+    autoStatus.style.display = 'none'; autoStatus.textContent = '';
+    anatRefBox.style.display = 'none';
+  }
+
+  // 一键清除全部数据：基本参数 + 手动输入 + X光片与测量 + 结果
+  function clearAllData() {
+    ageIn.value = ''; heightIn.value = ''; weightIn.value = '';
+    mCobb.value = ''; mBorden.value = '';
+    updateBMI();
+    state.anatRefMm = 100;
+    resetAll();
+    resultCard.classList.remove('show');
+    formulaBox.innerHTML = '';
+    noticeBox.className = 'notice'; noticeBox.innerHTML = '';
+    var mc = document.getElementById('manualCopy'); if (mc) mc.style.display = 'none';
+  }
+
+  function resetReadouts() {
+    measCobb.classList.add('pending'); cobbVal.innerHTML = '未测量';
+    measBorden.classList.add('pending'); bordenVal.innerHTML = '未测量';
+  }
+
+  var GUIDE = {
+    calib: ['点击图上两个已知真实距离的点，输入实际长度（用于毫米换算，可选）', '再点击第二个点并输入实际长度(mm)', '标尺已校准'],
+    cobb: ['Cobb角（复核/微调）：依次点击 C2 下终板前缘 → 后缘 → C7 下终板前缘 → 后缘', '已点 C2 下终板 2 点，请点击 C7 下终板前缘', '已点 3 点，请点击 C7 下终板后缘', 'Cobb 角已计算'],
+    borden: ['Borden值（复核/微调）：依次点击 C2 后下缘 → C7 后下缘 → 后缘弧顶', '已点 C2 后下缘，请点击 C7 后下缘', '已点 2 点，请点击后缘弧顶', 'Borden 值已计算']
+  };
+
+  function updateGuide() {
+    var m = state.mode;
+    if (!m) { guide.textContent = ''; guide.className = 'guide'; return; }
+    var msg, done = false;
+    if (m === MODE.CALIB) {
+      done = state.calibLen != null;
+      msg = done ? (GUIDE.calib[2] + '：' + state.calibLen + ' mm') : GUIDE.calib[state.calibPts.length];
+    } else if (m === MODE.COBB) {
+      var cn = state.cobbPts.length; done = cn >= 4;
+      msg = cn >= 4 ? GUIDE.cobb[3] : GUIDE.cobb[cn];
+    } else {
+      var bn = state.bordenPts.length; done = bn >= 3;
+      msg = bn >= 3 ? GUIDE.borden[3] : GUIDE.borden[bn];
+    }
+    guide.textContent = msg;
+    guide.className = 'guide' + (done ? ' done' : '');
+  }
+
+  // ===== 画布交互（点击添加 + 拖拽微调） =====
+  canvas.addEventListener('mousedown', function (e) {
+    if (!state.img) return;
+    var p = toCanvas(e);
+    var hit = hitTest(p);
+    if (hit) { drag = hit; canvas.style.cursor = 'grabbing'; return; }
+    if (state.mode === MODE.CALIB) {
+      if (state.calibPts.length >= 2) { state.calibPts = []; state.calibLen = null; state.scale = null; }
+      state.calibPts.push(p);
+      if (state.calibPts.length === 2) promptScale();
+    } else if (state.mode === MODE.COBB) {
+      if (state.cobbPts.length >= 4) state.cobbPts = [];
+      state.cobbPts.push(p);
+      state.cobbMode = null; // 手动微调后不再标自动/模糊标签
+    } else if (state.mode === MODE.BORDEN) {
+      if (state.bordenPts.length >= 3) state.bordenPts = [];
+      state.bordenPts.push(p);
+    }
+    updateGuide(); recompute(); redraw();
+  });
+  window.addEventListener('mousemove', function (e) {
+    if (!drag) return;
+    var p = toCanvas(e);
+    if (drag.type === 'calib') state.calibPts[drag.idx] = p;
+    else if (drag.type === 'cobb') state.cobbPts[drag.idx] = p;
+    else if (drag.type === 'borden') state.bordenPts[drag.idx] = p;
+    recompute(); redraw();
+  });
+  window.addEventListener('mouseup', function () {
+    if (drag) { drag = null; canvas.style.cursor = 'crosshair'; }
+  });
+
+  function toCanvas(e) {
+    var rect = canvas.getBoundingClientRect();
+    return { x: (e.clientX - rect.left) * (canvas.width / rect.width), y: (e.clientY - rect.top) * (canvas.height / rect.height) };
+  }
+  function hitTest(p) {
+    var all = [
+      { type: 'calib', pts: state.calibPts },
+      { type: 'cobb', pts: state.cobbPts },
+      { type: 'borden', pts: state.bordenPts }
+    ];
+    for (var g = 0; g < all.length; g++) {
+      for (var i = 0; i < all[g].pts.length; i++) {
+        var q = all[g].pts[i];
+        if (Math.hypot(q.x - p.x, q.y - p.y) <= 14) return { type: all[g].type, idx: i };
+      }
+    }
+    return null;
+  }
+
+  function promptScale() {
+    var len = window.prompt('两点间的实际长度是多少毫米(mm)？\n（例如 X 光片标尺刻度两点间为 50mm）', '50');
+    var n = parseFloat(len);
+    if (isNaN(n) || n <= 0) { state.calibPts = []; state.calibLen = null; state.scale = null; return; }
+    state.calibLen = n;
+    var d = dist(state.calibPts[0], state.calibPts[1]);
+    state.scale = n / (d || 1);
+    updateGuide(); recompute(); redraw();
+  }
+
+  // ===== 几何 =====
+  function dist(a, b) { return Math.hypot(b.x - a.x, b.y - a.y); }
+  function angleDeg(p1, p2, p3, p4) {
+    var a1 = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+    var a2 = Math.atan2(p4.y - p3.y, p4.x - p3.x);
+    var diff = Math.abs(a1 - a2) * 180 / Math.PI % 180;
+    if (diff > 90) diff = 180 - diff;
+    return diff;
+  }
+  function pointLineDist(p, a, b) {
+    var vx = b.x - a.x, vy = b.y - a.y;
+    var wx = p.x - a.x, wy = p.y - a.y;
+    return Math.abs(vx * wy - vy * wx) / (Math.hypot(vx, vy) || 1);
+  }
+  function footOf(p, a, b) {
+    var vx = b.x - a.x, vy = b.y - a.y;
+    var t = ((p.x - a.x) * vx + (p.y - a.y) * vy) / (vx * vx + vy * vy || 1);
+    return { x: a.x + t * vx, y: a.y + t * vy };
+  }
+  function mid(a, b) { return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; }
+
+  // ===== 计算 =====
+  function currentCobb() {
+    if (state.cobbPts.length === 4) return angleDeg(state.cobbPts[0], state.cobbPts[1], state.cobbPts[2], state.cobbPts[3]);
+    return null;
+  }
+  function currentBordenPx() {
+    if (state.bordenPts.length === 3) return pointLineDist(state.bordenPts[2], state.bordenPts[0], state.bordenPts[1]);
+    return null;
+  }
+  function recompute() {
+    var cobb = currentCobb();
+    var bp = currentBordenPx();
+    if (cobb != null) {
+      measCobb.classList.remove('pending');
+      var ctag = '';
+      if (state.cobbMode === 'estimate') ctag = '<span class="tag tag-est">模糊估计</span>';
+      else if (state.cobbMode === 'lowconf') ctag = '<span class="tag tag-est">低置信度</span>';
+      else if (state.autoDone) ctag = '<span class="tag">自动</span>';
+      cobbVal.innerHTML = cobb.toFixed(1) + ' <small>°</small>' + ctag;
+    }
+    if (bp != null) {
+      measBorden.classList.remove('pending');
+      var effScale = state.scale;
+      var btag = '';
+      if (effScale) {
+        btag = state.autoDone ? '<span class="tag">标尺校准</span>' : '';
+      } else if (state.scaleAuto) {
+        effScale = state.scaleAuto.mmPerPx;
+        btag = state.autoDone ? '<span class="tag tag-est">' + (state.scaleAuto.mode === 'ruler' ? '刻度自动' : '解剖估算') + '</span>' : '';
+      }
+      if (effScale) bordenVal.innerHTML = (bp * effScale).toFixed(1) + ' <small>mm</small>' + btag;
+      else bordenVal.innerHTML = bp.toFixed(0) + ' <small>px · 需标尺</small>';
+    } else {
+      measBorden.classList.add('pending');
+      bordenVal.innerHTML = '未测量';
+    }
+    if (cobb == null) {
+      measCobb.classList.add('pending');
+      cobbVal.innerHTML = '未测量';
+    }
+    var sh = [];
+    if (state.scale) sh.push('比例尺（手动标尺校准）：1px ≈ ' + state.scale.toFixed(3) + ' mm');
+    else if (state.scaleAuto) sh.push('比例尺（' + (state.scaleAuto.mode === 'ruler' ? '片上刻度自动识别' : '解剖估算') + '）：1px ≈ ' + state.scaleAuto.mmPerPx.toFixed(3) + ' mm');
+    if (bp != null && !effScale) sh.push('Borden 值需标尺校准后换算为 mm');
+    scaleHint.textContent = sh.join('  ·  ');
+    redraw();
+  }
+
+  // ===== 绘制 =====
+  function redraw() {
+    if (!state.img) return;
+    if (redrawQueued) return;
+    redrawQueued = true;
+    requestAnimationFrame(function () {
+      redrawQueued = false;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(state.img, 0, 0, canvas.width, canvas.height);
+
+      if (state.curve.length >= 2) {
+        // 后缘曲线（自动检测勾勒）
+        ctx.beginPath();
+        ctx.moveTo(state.curve[0].x, state.curve[0].y);
+        for (var cv = 1; cv < state.curve.length; cv++) ctx.lineTo(state.curve[cv].x, state.curve[cv].y);
+        ctx.strokeStyle = 'rgba(248,113,113,0.9)'; ctx.lineWidth = 2; ctx.stroke();
+        var bp0 = state.curve[0], bp1 = state.curve[state.curve.length - 1];
+        drawLine(bp0, bp1, 'rgba(56,189,248,0.85)', 1.5, [6, 4]);
+        drawText('后缘基线', (bp0.x + bp1.x) / 2, (bp0.y + bp1.y) / 2 - 8, '#60A5FA', 11);
+      }
+      if (state.calibPts.length) {
+        drawPts(state.calibPts, '#FBBF24', 5);
+        if (state.calibPts.length === 2) {
+          drawLine(state.calibPts[0], state.calibPts[1], '#FBBF24', 1.5, [6, 4]);
+          var cm = mid(state.calibPts[0], state.calibPts[1]);
+          drawText(state.calibLen != null ? state.calibLen + ' mm' : '标尺', cm.x, cm.y - 6, '#FBBF24');
+        }
+      }
+      if (state.cobbPts.length >= 2) {
+        drawPts(state.cobbPts.slice(0, 2), '#38BDF8', 5);
+        drawLine(state.cobbPts[0], state.cobbPts[1], '#38BDF8', 2.5);
+        drawText('C2', mid(state.cobbPts[0], state.cobbPts[1]).x, mid(state.cobbPts[0], state.cobbPts[1]).y - 8, '#38BDF8');
+      }
+      if (state.cobbPts.length >= 4) {
+        drawPts(state.cobbPts.slice(2, 4), '#38BDF8', 5);
+        drawLine(state.cobbPts[2], state.cobbPts[3], '#38BDF8', 2.5);
+        drawText('C7', mid(state.cobbPts[2], state.cobbPts[3]).x, mid(state.cobbPts[2], state.cobbPts[3]).y - 8, '#38BDF8');
+        var cd = angleDeg(state.cobbPts[0], state.cobbPts[1], state.cobbPts[2], state.cobbPts[3]);
+        drawText('Cobb ' + cd.toFixed(1) + '°', 12, 22, '#38BDF8', 14);
+      }
+      if (state.bordenPts.length >= 1) drawPts([state.bordenPts[0]], '#2DD4BF', 5);
+      if (state.bordenPts.length >= 2) {
+        drawPts([state.bordenPts[1]], '#2DD4BF', 5);
+        drawLine(state.bordenPts[0], state.bordenPts[1], '#2DD4BF', 2.5);
+        drawText('基线', mid(state.bordenPts[0], state.bordenPts[1]).x, mid(state.bordenPts[0], state.bordenPts[1]).y - 8, '#2DD4BF');
+      }
+      if (state.bordenPts.length >= 3) {
+        drawPts([state.bordenPts[2]], '#2DD4BF', 5);
+        var foot = footOf(state.bordenPts[2], state.bordenPts[0], state.bordenPts[1]);
+        drawLine(state.bordenPts[2], foot, '#2DD4BF', 1.5, [4, 3]);
+        drawText('曲度', state.bordenPts[2].x + 6, state.bordenPts[2].y - 6, '#2DD4BF');
+        if (state.scale) {
+          var bv = pointLineDist(state.bordenPts[2], state.bordenPts[0], state.bordenPts[1]) * state.scale;
+          drawText('Borden ' + bv.toFixed(1) + ' mm', 12, 42, '#2DD4BF', 14);
+        }
+      }
+    });
+  }
+
+  function drawPts(pts, color, r) {
+    pts.forEach(function (p, i) {
+      ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+      ctx.fillStyle = color; ctx.fill();
+      ctx.strokeStyle = '#0B1220'; ctx.lineWidth = 1.5; ctx.stroke();
+      drawText(String(i + 1), p.x + 6, p.y - 7, color, 11);
+    });
+  }
+  function drawLine(a, b, color, w, dash) {
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+    ctx.strokeStyle = color; ctx.lineWidth = w;
+    if (dash) ctx.setLineDash(dash); else ctx.setLineDash([]);
+    ctx.stroke(); ctx.setLineDash([]);
+  }
+  function drawText(txt, x, y, color, size) {
+    ctx.font = (size || 12) + 'px "Noto Sans SC", sans-serif';
+    ctx.fillStyle = color;
+    ctx.shadowColor = 'rgba(0,0,0,0.9)'; ctx.shadowBlur = 4;
+    ctx.fillText(txt, x, y); ctx.shadowBlur = 0;
+  }
+
+  // ============================================================
+  //  自动测量：图像处理检测椎体后缘与终板
+  // ============================================================
+  autoBtn.addEventListener('click', function () {
+    if (!state.img) return;
+    runAuto();
+  });
+
+  function runAuto() {
+    autoBtn.disabled = true;
+    autoStatus.style.display = 'block';
+    autoStatus.textContent = '正在分析图像…';
+    var res = detect(state.img);
+    autoBtn.disabled = false;
+    if (!res.ok) {
+      autoStatus.style.display = 'block';
+      autoStatus.textContent = res.message;
+      return;
+    }
+    autoStatus.style.display = 'block';
+    autoStatus.textContent = res.message;
+    if (res.cobbPts) state.cobbPts = res.cobbPts;
+    else state.cobbPts = [];
+    state.cobbMode = res.cobbMode || null;
+    if (res.bordenPts) state.bordenPts = res.bordenPts;
+    state.curve = res.curve || [];
+    state.scaleAuto = res.scaleAuto || null;
+    if (state.scaleAuto && state.scaleAuto.mode === 'anat') {
+      state.anatBasePx = state.scaleAuto.basePx;
+      anatRefBox.style.display = '';
+    } else {
+      state.anatBasePx = null;
+      anatRefBox.style.display = 'none';
+    }
+    state.autoDone = true;
+    emptyTip.style.display = 'none';
+    updateGuide(); recompute(); redraw();
+  }
+
+  // 自动检测主流程（工作于 canvas 显示分辨率）
+  // v3 方案：垂直边界追踪提取椎体后缘 + 鲁棒三次拟合 + 终板方向估计（失败降级）
+  function detect(img) {
+    var W = canvas.width, H = canvas.height;
+    ctx.drawImage(img, 0, 0, W, H);
+    var g = grayFromCanvas(W, H);
+    var gs = gaussian(g, W, H, 1.0);
+
+    // 1) 水平梯度（垂直边界）强度
+    var gx = new Float32Array(W * H);
+    for (var y = 0; y < H; y++) {
+      for (var x = 1; x < W - 1; x++) gx[y * W + x] = Math.abs(gs[y * W + x + 1] - gs[y * W + x - 1]);
+    }
+
+    // 2) 列边缘能量 → 定位椎体后缘参考列（后缘是整图最连续的垂直边界）
+    var xa0 = Math.max(1, Math.floor(W * 0.15)), xb0 = Math.min(W - 2, Math.floor(W * 0.85));
+    var colE = new Float32Array(W);
+    for (var x = xa0; x <= xb0; x++) {
+      var s = 0;
+      for (var yy = 8; yy < H - 8; yy++) s += gx[yy * W + x];
+      colE[x] = s;
+    }
+    var ref = xa0;
+    for (x = xa0 + 1; x <= xb0; x++) if (colE[x] > colE[ref]) ref = x;
+    var xa = Math.max(1, Math.floor(ref - W * 0.13));
+    var xb = Math.min(W - 2, Math.floor(ref + W * 0.13));
+
+    // 3) 每行找搜索区间内最强垂直边界 → 后缘候选点
+    var raw = [];
+    for (var y = 12; y < H - 12; y++) {
+      var bestX = xa, bestG = 0;
+      for (var x = xa; x <= xb; x++) {
+        var gg = gx[y * W + x];
+        if (gg > bestG) { bestG = gg; bestX = x; }
+      }
+      if (bestG >= 7) raw.push({ x: bestX, y: y });
+    }
+    if (raw.length < Math.max(30, H * 0.1)) {
+      return { ok: false, message: '未检测到连续的椎体后缘（图像过暗/过曝或非侧位片）。可改用下方「标尺校准 + 手动标注」，或换一张更清晰的侧位片。' };
+    }
+    // 4) 最长连续段（y 间隔 ≤ 3）
+    raw.sort(function (a, b) { return a.y - b.y; });
+    var runs = [], runStart = 0;
+    for (var i = 1; i <= raw.length; i++) {
+      if (i === raw.length || raw[i].y - raw[i - 1].y > 3) {
+        runs.push(raw.slice(runStart, i));
+        runStart = i;
+      }
+    }
+    var main = runs[0];
+    for (i = 1; i < runs.length; i++) if (runs[i].length > main.length) main = runs[i];
+    if (main.length < Math.max(25, H * 0.08)) {
+      return { ok: false, message: '椎体后缘不连续（可能被内固定/伪影遮挡）。可改用下方手动标注，或换一张更清晰的侧位片。' };
+    }
+
+    // 5) 有效段（去掉上下各 8%，避开下颌骨与金属伪影）
+    var n = main.length;
+    var s0 = Math.floor(n * 0.08), s1 = Math.floor(n * 0.92);
+    if (s1 - s0 < 20) { s0 = 0; s1 = n; }
+    var pts = main.slice(s0, s1);
+    var xs = pts.map(function (p) { return p.x; });
+    var ys = pts.map(function (p) { return p.y; });
+
+    // 6) 鲁棒三次多项式拟合（迭代剔除离群点；自变量先标准化避免正规方程病态）
+    var yMean = 0, yStd = 0;
+    for (var yi = 0; yi < ys.length; yi++) yMean += ys[yi];
+    yMean /= ys.length;
+    for (yi = 0; yi < ys.length; yi++) yStd += (ys[yi] - yMean) * (ys[yi] - yMean);
+    yStd = Math.sqrt(yStd / ys.length) || 1;
+    var ysNorm = ys.map(function (v) { return (v - yMean) / yStd; });
+    var pf = polyfitRobust(ysNorm, xs, 3);
+    if (!pf) {
+      return { ok: false, message: '后缘曲线拟合失败，请改用下方手动标注。' };
+    }
+    var ymin = ys[0], ymax = ys[ys.length - 1];
+    var curve = [];
+    for (var yy2 = ymin; yy2 <= ymax; yy2++) {
+      curve.push({ x: polyval(pf, (yy2 - yMean) / yStd), y: yy2 });
+    }
+
+    // 7) Borden：基准线端点依赖 Cobb 定位的 C2/C7 下终板行，故移到 Cobb 检测之后计算
+
+    // 8) Cobb：三级策略——①精确终板扫描 → ②低阈值扫描 → ③后缘曲度模糊估计（用户可接受相对模糊）
+    var L = Math.round(Math.min(34, W * 0.13)); // 终板线半长（随图宽缩放）
+    function platePts(p, angDeg, half) {
+      var rad = angDeg * Math.PI / 180;
+      var dx = Math.cos(rad) * half, dy = Math.sin(rad) * half;
+      return [ { x: p.x - dx, y: p.y - dy }, { x: p.x + dx, y: p.y + dy } ];
+    }
+    var clen = curve.length;
+    var ww = Math.round(Math.min(90, W * 0.35)), hh = Math.round(Math.min(46, H * 0.16));
+    var cobbPts = null, cobbWarn = null, cobbMode = null;
+    var angTop = null, angBot = null, pTop = null, pBot = null;
+    // ① v5：按椎体序列定位 C2 下终板（约后缘顶+1.0h）与 C7 下终板（约后缘底-0.5h），
+    //    亮暗对比（终板=椎体亮区与椎间隙暗区边界）确定终板行，再拟合水平边缘角度；三级阈值
+    var tp0 = curve[0], bp0 = curve[clen - 1];
+    var hBody = Math.max(50, (bp0.y - tp0.y) / 6);
+    var c2lo = tp0.y + 0.75 * hBody, c2hi = tp0.y + 1.45 * hBody;
+    var c7lo = bp0.y - 1.4 * hBody, c7hi = bp0.y - 0.5 * hBody;
+    function yToIdx(y) { return Math.max(0, Math.min(clen - 1, Math.round((y - tp0.y) / Math.max(1, bp0.y - tp0.y) * clen))); }
+    var c2A = yToIdx(c2lo), c2B = yToIdx(c2hi);
+    var c7A = yToIdx(c7lo), c7B = yToIdx(c7hi);
+    function rowMeanAt(cx, cy, halfW) {
+      var x0 = Math.max(0, Math.round(cx - halfW)), x1 = Math.min(W - 1, Math.round(cx + halfW));
+      var y = Math.max(1, Math.min(H - 2, Math.round(cy)));
+      var sm = 0, n = 0;
+      for (var x = x0; x <= x1; x++) { sm += gs[y * W + x]; n++; }
+      return n ? sm / n : 0;
+    }
+    function fitEndplateAngle(gs, W, H, cx, y, halfW, r, gth) {
+      var pts = [];
+      for (var x = Math.max(1, Math.round(cx - halfW)); x <= Math.min(W - 2, Math.round(cx + halfW)); x++) {
+        var bg = 0, best = -1;
+        for (var yy = Math.max(1, Math.round(y - r)); yy <= Math.min(H - 2, Math.round(y + r)); yy++) {
+          var gg = Math.abs(gs[(yy + 1) * W + x] - gs[(yy - 1) * W + x]);
+          if (gg > bg) { bg = gg; best = yy; }
+        }
+        if (bg >= gth) pts.push({ x: x, y: best, wt: bg });
+      }
+      if (pts.length < 10) return null;
+      var cur = pts.slice();
+      for (var iter = 0; iter < 3 && cur.length >= 10; iter++) {
+        var sx = 0, sy = 0, sxx = 0, sxy = 0, sw = 0;
+        for (var i = 0; i < cur.length; i++) { var q = cur[i]; sx += q.x * q.wt; sy += q.y * q.wt; sxx += q.x * q.x * q.wt; sxy += q.x * q.y * q.wt; sw += q.wt; }
+        var mx = sx / sw, my = sy / sw;
+        var denom = sxx - sw * mx * mx;
+        if (Math.abs(denom) < 1e-6) break;
+        var a = (sxy - sw * mx * my) / denom;
+        var resid = cur.map(function (q) { return { q: q, r: Math.abs(q.y - (my + a * (q.x - mx))) }; });
+        resid.sort(function (u, v) { return v.r - u.r; });
+        var keep = Math.ceil(cur.length * 0.75);
+        cur = resid.slice(0, keep).map(function (u) { return u.q; });
+      }
+      var sx2 = 0, sy2 = 0, sxx2 = 0, sxy2 = 0, sw2 = 0;
+      for (var i2 = 0; i2 < cur.length; i2++) { var q2 = cur[i2]; sx2 += q2.x * q2.wt; sy2 += q2.y * q2.wt; sxx2 += q2.x * q2.x * q2.wt; sxy2 += q2.x * q2.y * q2.wt; sw2 += q2.wt; }
+      var mx2 = sx2 / sw2, my2 = sy2 / sw2;
+      var denom2 = sxx2 - sw2 * mx2 * mx2;
+      if (Math.abs(denom2) < 1e-6) return null;
+      var a2 = (sxy2 - sw2 * mx2 * my2) / denom2;
+      var conf = cur.length / (Math.round(cx + halfW) - Math.round(cx - halfW) + 1);
+      return { ang: Math.atan(a2) * 180 / Math.PI, conf: conf, y: my2 };
+    }
+    function findEndplateSeg(curve, a, b, wantDown, gth) {
+      // 段内曲线 y 范围与平均 x（终板横贯椎体，用段内代表性 x 列扫描）
+      var minY = 1e9, maxY = -1e9, sumX = 0, cnt = 0;
+      var stepI = Math.max(1, Math.floor((b - a) / 10));
+      for (var idx = a; idx <= b; idx += stepI) {
+        var pp = curve[idx];
+        if (pp.y < minY) minY = pp.y;
+        if (pp.y > maxY) maxY = pp.y;
+        sumX += pp.x; cnt++;
+      }
+      if (!cnt) return null;
+      var cx = sumX / cnt;
+      var halfW = Math.round(ww / 2);
+      var ylo = Math.max(3, Math.round(minY - hh * 0.3)), yhi = Math.min(H - 3, Math.round(maxY + hh * 0.3));
+      // 连续扫描亮暗对比（终板=椎体亮区与椎间隙暗区边界；2px 步进保证不漏）
+      var bestY = -1, bestC = -1;
+      for (var y = ylo + 6; y <= yhi - 6; y += 2) {
+        var up = 0, dn = 0;
+        for (var dy = 1; dy <= 5; dy++) { up += rowMeanAt(cx, y - dy, halfW); dn += rowMeanAt(cx, y + dy, halfW); }
+        up /= 5; dn /= 5;
+        var cc = wantDown ? (up - dn) : (dn - up);
+        if (cc > bestC) { bestC = cc; bestY = y; }
+      }
+      if (bestY < 0 || bestC < 3) return null;
+      var r = fitEndplateAngle(gs, W, H, cx, bestY, halfW, 4, gth);
+      if (!r || Math.abs(r.ang) > 45) return null;
+      return { ang: r.ang, conf: r.conf, y: r.y, x: cx, c: bestC };
+    }
+    var gthList = [45, 25, 15];
+    for (var gi = 0; gi < gthList.length && !cobbPts; gi++) {
+      var gthNow = gthList[gi];
+      var topRes = findEndplateSeg(curve, c2A, c2B, true, gthNow);
+      var botRes = findEndplateSeg(curve, c7A, c7B, true, gthNow);
+      if (!topRes) topRes = findEndplateSeg(curve, c2A, c2B, false, gthNow);
+      if (!botRes) botRes = findEndplateSeg(curve, c7A, c7B, false, gthNow);
+      if (topRes && botRes) {
+        angTop = topRes.ang; angBot = botRes.ang;
+        pTop = { x: topRes.x, y: topRes.y }; pBot = { x: botRes.x, y: botRes.y };
+        var diff = Math.abs(angTop - angBot) % 180;
+        if (diff > 90) diff = 180 - diff;
+        if (diff >= 0.5 && diff <= 60) {
+          cobbMode = (gthNow >= 25 && topRes.conf > 0.22 && botRes.conf > 0.22) ? 'exact' : 'lowconf';
+          cobbPts = platePts(pTop, angTop, L).concat(platePts(pBot, angBot, L));
+          if (cobbMode === 'lowconf') cobbWarn = 'Cobb 为低置信度估计（C2/C7 终板影像较弱），建议拖动终板点复核。';
+          else if (diff < 2) cobbWarn = 'Cobb 角极小（颈椎生理曲度接近变直），自动检测对终板角度敏感，建议拖动终板点复核。';
+        }
+      }
+    }
+    if (!cobbPts) {
+      // ③ 后缘曲度模糊估计：上/下 1/3 后缘切线方向角之差 ≈ Cobb（终板与后缘固有夹角在两端近似抵消）
+      var aT = curveTanAngle(curve, 0, Math.floor(clen / 3));
+      var aB = curveTanAngle(curve, Math.floor(clen * 3 / 5), Math.floor(clen * 5 / 6));
+      if (aT != null && aB != null) {
+        var diff2 = Math.abs(aT - aB);
+        if (diff2 > 90) diff2 = 180 - diff2;
+        if (diff2 >= 0.5 && diff2 <= 60) {
+          cobbMode = 'estimate';
+          var L2 = Math.round(Math.min(30, W * 0.11));
+          var ptT = curve[Math.floor(clen / 6)], ptB = curve[Math.floor(clen * 5 / 6)];
+          cobbPts = platePts(ptT, aT - 90, L2).concat(platePts(ptB, aB - 90, L2));
+          cobbWarn = 'Cobb 为模糊估计（C2/C7 终板影像不清，由后缘曲度推算，非终板直接测量；术后片/过曝片误差较大，请务必拖动终板点复核）。';
+        }
+      }
+      if (!cobbPts) cobbWarn = '终板自动识别受限且无法由后缘推算，Cobb 角请手动微调终板线后获得。';
+    }
+
+    // 7) Borden（标准定义）：基准线 = C2 椎体后缘（齿状突后缘）→ C7 椎体后缘；弧线 = C3~C6 后缘；最大垂距
+    //    端点用 Cobb 定位的 C2/C7 下终板行后缘点；无法定位时降级用后缘曲线两端
+    var bTopY = pTop ? pTop.y : curve[0].y;
+    var bBotY = pBot ? pBot.y : curve[curve.length - 1].y;
+    var top = curve[yToIdx(bTopY)], bot = curve[yToIdx(bBotY)];
+    var apex = null, maxD = -1;
+    var iA = Math.max(0, Math.min(clen - 1, yToIdx(Math.min(bTopY, bBotY))));
+    var iB = Math.max(0, Math.min(clen - 1, yToIdx(Math.max(bTopY, bBotY))));
+    for (var ci = iA; ci <= iB; ci++) {
+      var d = pointLineDist(curve[ci], top, bot);
+      if (d > maxD) { maxD = d; apex = curve[ci]; }
+    }
+    var bordenPts = [top, bot, apex];
+
+    var msg = '自动检测完成：已勾勒椎体后缘并测量 Borden 值（可拖动复核）。';
+    if (cobbWarn) msg += cobbWarn;
+    else msg += 'Cobb 角已自动测量。';
+
+    // 9) 自动标尺：①片上刻度条检测 → ②C2-C7 后缘解剖估算（手动标尺校准始终最优先）
+    var scaleAuto = null;
+    var ruler = detectRuler(gs, W, H);
+    if (ruler && ruler.mmPerPx > 0) {
+      scaleAuto = { mmPerPx: ruler.mmPerPx, mode: 'ruler', refMm: null, basePx: null, message: '已自动识别片上刻度（间距 ' + ruler.spacing + ' px），比例尺 1px ≈ ' + ruler.mmPerPx.toFixed(3) + ' mm' };
+    } else {
+      var basePx = Math.hypot(top.x - bot.x, top.y - bot.y);
+      if (basePx > 20) {
+        var refMm = state.anatRefMm || 100; // C2-C7 后缘连线参考长度（可调）
+        scaleAuto = { mmPerPx: refMm / basePx, mode: 'anat', refMm: refMm, basePx: basePx, message: '解剖估算（按 C2-C7 后缘≈' + refMm + ' mm，±20%），建议标尺校准复核' };
+      }
+    }
+    if (scaleAuto) msg += ' ' + scaleAuto.message + '。';
+
+    return {
+      ok: true,
+      message: msg,
+      cobbPts: cobbPts,
+      bordenPts: bordenPts,
+      curve: curve,
+      cobbMode: cobbMode,
+      scaleAuto: scaleAuto
+    };
+  }
+
+  // 自动检测片上刻度条：仅在图像最边缘寻找贯穿分布的等间距细刻度线，返回 {mmPerPx, spacing} 或 null（刻度间距按 10mm）。
+  // 严格要求：≥6 条刻度、间距一致（>50% gap 接近中位数）、对比度足够强，避免把骨纹理等伪周期误判为刻度。
+  function detectRuler(gs, W, H) {
+    function tryProfile(profile) {
+      var n = profile.length;
+      if (n < 60) return null;
+      var mn = Infinity, mx = -Infinity;
+      for (var i = 0; i < n; i++) { if (profile[i] < mn) mn = profile[i]; if (profile[i] > mx) mx = profile[i]; }
+      if (mx - mn < 50) return null; // 刻度条对比度足够强
+      var thr = (mn + mx) / 2;
+      var marks = [];
+      for (var i = 1; i < n - 1; i++) {
+        if (profile[i] < thr && profile[i] <= profile[i-1] && profile[i] <= profile[i+1]) marks.push(i);
+      }
+      if (marks.length < 6) return null; // 至少 6 条刻度
+      var gaps = [];
+      for (var i = 1; i < marks.length; i++) gaps.push(marks[i] - marks[i-1]);
+      gaps.sort(function(a,b){return a-b;});
+      var med = gaps[Math.floor(gaps.length/2)];
+      if (med < 5 || med > 25) return null;
+      var tol = Math.max(1, med * 0.15);
+      var close = gaps.filter(function(g){ return Math.abs(g - med) <= tol; });
+      if (close.length / gaps.length < 0.5) return null; // 大部分间距一致才算等距刻度
+      return { spacing: med, mmPerPx: 10 / med };
+    }
+    // 最边缘 8% 宽区域，沿垂直方向的列均值 profile（真刻度条通常在胶片边缘）
+    var edgeW = Math.max(8, Math.floor(W * 0.08));
+    var profL = new Float32Array(H), profR = new Float32Array(H);
+    for (var y = 0; y < H; y++) {
+      var sl = 0, sr = 0;
+      for (var x = 0; x < edgeW; x++) { sl += gs[y*W+x]; sr += gs[y*W+(W-1-x)]; }
+      profL[y] = sl / edgeW; profR[y] = sr / edgeW;
+    }
+    var rl = tryProfile(profL), rr = tryProfile(profR);
+    return rl || rr || null;
+  }
+
+  // 后缘曲线局部方向角（相对水平，接近 90°）：对 x = a + b*y 做最小二乘，方向角 = atan2(1, b)
+  function curveTanAngle(curve, a, b) {
+    var n = b - a;
+    if (n < 4) return null;
+    var sx = 0, sy = 0, sy2 = 0, sxy = 0;
+    for (var i = a; i < b; i++) {
+      var x = curve[i].x, y = curve[i].y;
+      sx += x; sy += y; sy2 += y * y; sxy += x * y;
+    }
+    var m = n;
+    var denom = m * sy2 - sy * sy;
+    if (Math.abs(denom) < 1e-9) return null;
+    var bb = (m * sxy - sx * sy) / denom;
+    return Math.atan2(1, bb) * 180 / Math.PI;
+  }
+
+  // 沿曲线区间多点扫描终板方向，返回 {ang, conf, pt} 或 null；gth=梯度阈值，maxAng=允许最大倾角
+  function scanCurveForPlate(gs, W, H, curve, a, b, ww, hh, gth, maxAng) {
+    var bestRes = null;
+    var step = Math.max(1, Math.floor((b - a) / 5));
+    for (var idx = a; idx <= b; idx += step) {
+      var p = curve[idx];
+      var r = dominantHorizontalAngle(gs, W, H, p.x, p.y, ww, hh, gth);
+      if (!r) continue;
+      if (Math.abs(r.ang) > maxAng) continue;
+      if (!bestRes || r.conf > bestRes.conf) bestRes = { ang: r.ang, conf: r.conf, pt: p };
+    }
+    return bestRes;
+  }
+
+  // 鲁棒多项式拟合：迭代剔除离群点，返回系数数组（从高次到低次）
+  function polyfitRobust(xin, yin, deg) {
+    var n = xin.length;
+    if (n < deg + 2) return null;
+    var xv = xin.slice(), yv = yin.slice();
+    for (var iter = 0; iter < 5; iter++) {
+      var p = polyfitLS(xv, yv, deg);
+      if (!p) return null;
+      var res = [];
+      for (var i = 0; i < xv.length; i++) res.push(Math.abs(yv[i] - polyval(p, xv[i])));
+      var sorted = res.slice().sort(function (a, b) { return a - b; });
+      var med = sorted[Math.floor(sorted.length / 2)];
+      var thr = med * 3 + 6;
+      var nv = [];
+      for (i = 0; i < xv.length; i++) if (res[i] <= thr) nv.push(i);
+      if (nv.length < xv.length * 0.5) break;
+      if (nv.length === xv.length) break;
+      xv = nv.map(function (k) { return xv[k]; });
+      yv = nv.map(function (k) { return yv[k]; });
+    }
+    return polyfitLS(xv, yv, deg);
+  }
+  function polyfitLS(xin, yin, deg) {
+    var n = xin.length, m = deg + 1;
+    var A = [], b = [];
+    for (var r = 0; r < m; r++) { A.push(new Float64Array(m)); b.push(0); }
+    for (var i = 0; i < n; i++) {
+      var px = 1;
+      for (var c = 0; c < m; c++) {
+        b[c] += yin[i] * px;
+        px *= xin[i];
+      }
+    }
+    for (var i2 = 0; i2 < n; i2++) {
+      var pxa = 1;
+      for (var r2 = 0; r2 < m; r2++) {
+        var pxb = pxa;
+        for (var c2 = 0; c2 < m; c2++) {
+          A[r2][c2] += pxb;
+          pxb *= xin[i2];
+        }
+        pxa *= xin[i2];
+      }
+    }
+    // 高斯消元解正规方程（矩阵数值可能病态，用行缩放）
+    var scale = [];
+    for (r = 0; r < m; r++) {
+      var mx = 0;
+      for (c = 0; c < m; c++) mx = Math.max(mx, Math.abs(A[r][c]));
+      scale.push(mx > 0 ? mx : 1);
+    }
+    var E = [];
+    for (r = 0; r < m; r++) {
+      E.push(new Float64Array(m + 1));
+      for (c = 0; c < m; c++) E[r][c] = A[r][c] / scale[r];
+      E[r][m] = b[r] / scale[r];
+    }
+    // 高斯消元（部分主元）
+    for (var col = 0; col < m; col++) {
+      var piv = col;
+      for (r = col + 1; r < m; r++) if (Math.abs(E[r][col]) > Math.abs(E[piv][col])) piv = r;
+      if (Math.abs(E[piv][col]) < 1e-12) return null;
+      if (piv !== col) { var tmp = E[piv]; E[piv] = E[col]; E[col] = tmp; }
+      for (r = col + 1; r < m; r++) {
+        var f = E[r][col] / E[col][col];
+        for (c = col; c <= m; c++) E[r][c] -= f * E[col][c];
+      }
+    }
+    var coef = new Float64Array(m);
+    for (var r3 = m - 1; r3 >= 0; r3--) {
+      var s = E[r3][m];
+      for (c = r3 + 1; c < m; c++) s -= E[r3][c] * coef[c];
+      coef[r3] = s / E[r3][r3];
+    }
+    return Array.prototype.slice.call(coef);
+  }
+  function polyval(p, x) {
+    // polyfitLS 返回系数为 [常数项, 一次项, …, 最高次项]，Horner 从最高次开始
+    var v = 0;
+    for (var i = p.length - 1; i >= 0; i--) v = v * x + p[i];
+    return v;
+  }
+
+  // ---------- 图像处理辅助 ----------
+  function grayFromCanvas(w, h) {
+    var d = ctx.getImageData(0, 0, w, h).data;
+    var g = new Float32Array(w * h);
+    for (var i = 0; i < w * h; i++) g[i] = 0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2];
+    return g;
+  }
+  function gaussian(src, w, h, sigma) {
+    var r = Math.max(1, Math.round(sigma * 2));
+    var out = new Float32Array(w * h);
+    var kern = [0.075, 0.124, 0.075, 0.124, 0.204, 0.124, 0.075, 0.124, 0.075];
+    for (var y = 1; y < h - 1; y++) {
+      for (var x = 1; x < w - 1; x++) {
+        var v = 0;
+        for (var ky = -1; ky <= 1; ky++)
+          for (var kx = -1; kx <= 1; kx++)
+            v += src[(y + ky) * w + (x + kx)] * kern[(ky + 1) * 3 + (kx + 1)];
+        out[y * w + x] = v;
+      }
+    }
+    for (var y2 = 0; y2 < h; y2++) { out[y2 * w] = src[y2 * w]; out[y2 * w + w - 1] = src[y2 * w + w - 1]; }
+    for (var x2 = 0; x2 < w; x2++) { out[x2] = src[x2]; out[(h - 1) * w + x2] = src[(h - 1) * w + x2]; }
+    return out;
+  }
+  function percentile(arr, n, p) {
+    var k = Math.floor(p * n);
+    var a = new Float32Array(arr.buffer.slice(0, n * 4));
+    a.sort();
+    return a[Math.max(0, Math.min(n - 1, k))];
+  }
+  function stretchArray(src, w, h, lo, hi) {
+    var span = hi - lo || 1;
+    var out = new Float32Array(w * h);
+    for (var i = 0; i < w * h; i++) {
+      var v = (src[i] - lo) / span;
+      if (v < 0) v = 0; else if (v > 1) v = 1;
+      out[i] = v * 255;
+    }
+    return out;
+  }
+  function smooth(arr, n, radius) {
+    var out = new Float32Array(n);
+    for (var i = 0; i < n; i++) {
+      var s = 0, c = 0;
+      for (var j = -radius; j <= radius; j++) {
+        var k = i + j;
+        if (k >= 0 && k < n) { s += arr[k]; c++; }
+      }
+      out[i] = s / c;
+    }
+    return out;
+  }
+  // Otsu 自适应阈值（256 级）
+  function otsu(src, n) {
+    var hist = new Float32Array(256);
+    for (var i = 0; i < n; i++) {
+      var v = Math.round(src[i]);
+      if (v < 0) v = 0; else if (v > 255) v = 255;
+      hist[v]++;
+    }
+    var total = n, sum = 0;
+    for (var t = 0; t < 256; t++) sum += t * hist[t];
+    var sumB = 0, wB = 0, maxVar = 0, best = 127;
+    for (t = 0; t < 256; t++) {
+      wB += hist[t];
+      if (wB === 0) continue;
+      var wF = total - wB;
+      if (wF === 0) break;
+      sumB += t * hist[t];
+      var mB = sumB / wB, mF = (sum - sumB) / wF;
+      var v = wB * wF * (mB - mF) * (mB - mF);
+      if (v > maxVar) { maxVar = v; best = t; }
+    }
+    return best;
+  }
+  function brightSegments(src, w, h, y, x0, x1, thr) {
+    var segs = [];
+    var inSeg = false, s0 = 0;
+    for (var x = x0; x <= x1; x++) {
+      var bright = src[y * w + x] > thr;
+      if (bright && !inSeg) { inSeg = true; s0 = x; }
+      if (!bright && inSeg) { inSeg = false; if (x - s0 >= 6) segs.push({ start: s0, end: x - 1 }); }
+    }
+    if (inSeg && x1 - s0 >= 6) segs.push({ start: s0, end: x1 });
+    return segs;
+  }
+  function edgeSharpness(src, w, h, y, ex) {
+    // 边界外侧 3px 平均 vs 内侧 3px 平均的差（绝对值）
+    if (ex < 4 || ex > w - 5) return 0;
+    var out = 0, inn = 0;
+    for (var k = 1; k <= 3; k++) { out += src[y * w + ex - k]; inn += src[y * w + ex + k]; }
+    return Math.abs(out - inn) / 3;
+  }
+  function medianFilterCurve(curve, win) {
+    var out = [];
+    var half = Math.floor(win / 2);
+    for (var i = 0; i < curve.length; i++) {
+      var xs = [];
+      for (var j = Math.max(0, i - half); j <= Math.min(curve.length - 1, i + half); j++) xs.push(curve[j].x);
+      xs.sort(function (a, b) { return a - b; });
+      out.push({ x: xs[Math.floor(xs.length / 2)], y: curve[i].y });
+    }
+    return out;
+  }
+  // 用列梯度峰值线性拟合估计终板方向角（-90..90）；迭代剔除离群抗干扰；返回 {ang, conf} 或 null
+  function dominantHorizontalAngle(src, w, h, cx, cy, ww, hh, gth) {
+    var x0 = Math.max(1, Math.round(cx - ww / 2)), x1 = Math.min(w - 2, Math.round(cx + ww / 2));
+    var y0 = Math.max(1, Math.round(cy - hh / 2)), y1 = Math.min(h - 2, Math.round(cy + hh / 2));
+    var pts = [];
+    for (var x = x0; x <= x1; x++) {
+      var bestY = -1, bestG = 0;
+      for (var y = y0; y <= y1; y++) {
+        var g = Math.abs(src[(y + 1) * w + x] - src[(y - 1) * w + x]);
+        if (g > bestG) { bestG = g; bestY = y; }
+      }
+      if (bestG >= gth && bestY > y0 && bestY < y1) pts.push({ x: x, y: bestY, wt: bestG });
+    }
+    if (pts.length < 12) return null;
+    // 迭代：加权线性拟合 → 剔除残差最大的 25% → 再拟合（最多 3 轮）
+    var cur = pts.slice();
+    for (var iter = 0; iter < 3 && cur.length >= 12; iter++) {
+      var sx = 0, sy = 0, sxx = 0, sxy = 0, sw = 0;
+      for (var i = 0; i < cur.length; i++) {
+        var q = cur[i];
+        sx += q.x * q.wt; sy += q.y * q.wt; sxx += q.x * q.x * q.wt; sxy += q.x * q.y * q.wt; sw += q.wt;
+      }
+      var mx = sx / sw, my = sy / sw;
+      var denom = sxx - sw * mx * mx;
+      if (Math.abs(denom) < 1e-6) break;
+      var a = (sxy - sw * mx * my) / denom;
+      // 计算残差并按残差排序
+      var resid = cur.map(function (q) {
+        return { q: q, r: Math.abs(q.y - (my + a * (q.x - mx))) };
+      });
+      resid.sort(function (u, v) { return v.r - u.r; });
+      var keep = Math.ceil(cur.length * 0.75);
+      cur = resid.slice(0, keep).map(function (u) { return u.q; });
+    }
+    // 最终拟合
+    sx = 0; sy = 0; sxx = 0; sxy = 0; sw = 0;
+    for (i = 0; i < cur.length; i++) {
+      var q2 = cur[i];
+      sx += q2.x * q2.wt; sy += q2.y * q2.wt; sxx += q2.x * q2.x * q2.wt; sxy += q2.x * q2.y * q2.wt; sw += q2.wt;
+    }
+    mx = sx / sw; my = sy / sw;
+    denom = sxx - sw * mx * mx;
+    if (Math.abs(denom) < 1e-6) return null;
+    a = (sxy - sw * mx * my) / denom;
+    var ang = Math.atan(a) * 180 / Math.PI;
+    return { ang: ang, conf: cur.length / (x1 - x0 + 1) };
+  }
+
+  // ===== BMI =====
+  heightIn.addEventListener('input', updateBMI);
+  weightIn.addEventListener('input', updateBMI);
+  function updateBMI() {
+    var h = parseFloat(heightIn.value), w = parseFloat(weightIn.value);
+    if (h > 0 && w > 0) {
+      var bmi = w / Math.pow(h / 100, 2);
+      bmiReadout.innerHTML = 'BMI = ' + bmi.toFixed(1) + ' kg/m²' + bmiClass(bmi);
+      bmiReadout.classList.add('show');
+    } else bmiReadout.classList.remove('show');
+  }
+  function bmiClass(bmi) {
+    if (bmi < 18.5) return ' · 偏瘦';
+    if (bmi < 24) return ' · 正常';
+    if (bmi < 28) return ' · 超重';
+    return ' · 肥胖';
+  }
+
+  // ===== 解剖参考长度调整（重算解剖估算比例尺） =====
+  var anatRefIn = document.getElementById('anatRef');
+  anatRefIn.addEventListener('change', function () {
+    var n = parseFloat(anatRefIn.value);
+    if (isNaN(n) || n <= 0 || !state.scaleAuto || state.scaleAuto.mode !== 'anat') return;
+    state.anatRefMm = n;
+    state.scaleAuto.refMm = n;
+    state.scaleAuto.mmPerPx = n / state.scaleAuto.basePx;
+    if (state.autoDone) autoStatus.textContent = '解剖参考长度已更新为 ' + n + ' mm，Borden 值已按新比例尺重算。';
+    recompute();
+  });
+
+  // ===== 一键清除数据 =====
+  clearAllBtn.addEventListener('click', clearAllData);
+
+  // ===== 复制数据 =====
+  function copyText(txt) {
+    // 优先使用 execCommand 同步方案：file:// 协议与各浏览器兼容性最好、执行确定性强
+    var ta = document.createElement('textarea');
+    ta.value = txt;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.left = '0';
+    ta.style.top = '0';
+    ta.style.opacity = '0';
+    ta.style.zIndex = '-1';
+    document.body.appendChild(ta);
+    ta.focus();
+    try { ta.setSelectionRange(0, txt.length); } catch (e) { ta.select(); }
+    var ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    document.body.removeChild(ta);
+    if (!ok && navigator.clipboard && navigator.clipboard.writeText) {
+      // execCommand 失败时兜底：尝试异步剪贴板 API
+      navigator.clipboard.writeText(txt).then(function () {}, function () {});
+    }
+    return ok;
+  }
+  copyBtn.addEventListener('click', function () {
+    var parts = ['【颈椎枕建模数据】'];
+    var cobb = parseFloat(mCobb.value), cobbSrc = '手动输入';
+    if (isNaN(cobb)) {
+      var c = currentCobb();
+      if (c != null) { cobb = c; cobbSrc = state.cobbMode === 'estimate' ? '模糊估计' : (state.cobbMode === 'lowconf' ? '低置信度' : '自动测量'); }
+    }
+    var borden = parseFloat(mBorden.value), bSrc = '手动输入';
+    if (isNaN(borden)) {
+      var bp = currentBordenPx();
+      if (bp != null) {
+        var effScale = state.scale;
+        if (!effScale && state.scaleAuto) effScale = state.scaleAuto.mmPerPx;
+        if (effScale) { borden = bp * effScale; bSrc = state.scale ? '标尺校准' : (state.scaleAuto ? (state.scaleAuto.mode === 'ruler' ? '刻度自动' : '解剖估算') : ''); }
+      }
+    }
+    if (!isNaN(cobb)) parts.push('Cobb 角：' + cobb.toFixed(1) + '°（' + cobbSrc + '）');
+    if (!isNaN(borden)) parts.push('Borden 值：' + borden.toFixed(1) + ' mm（' + bSrc + '）');
+    if (state.scale) parts.push('比例尺：1px ≈ ' + state.scale.toFixed(3) + ' mm（手动标尺校准）');
+    else if (state.scaleAuto) parts.push('比例尺：1px ≈ ' + state.scaleAuto.mmPerPx.toFixed(3) + ' mm（' + (state.scaleAuto.mode === 'ruler' ? '刻度自动' : '解剖估算') + '）');
+    var age = parseFloat(ageIn.value), h = parseFloat(heightIn.value), w = parseFloat(weightIn.value);
+    if (!isNaN(age) && !isNaN(h) && !isNaN(w)) {
+      var bmi = w / Math.pow(h / 100, 2);
+      parts.push('基本参数：年龄 ' + age.toFixed(0) + ' 岁 / 身高 ' + h.toFixed(0) + ' cm / 体重 ' + w.toFixed(1) + ' kg / BMI ' + bmi.toFixed(1));
+    }
+    var rh = rHeight.textContent.trim();
+    if (rh && rh.indexOf('--') < 0) parts.push('推荐枕高 Hopt：' + rh.replace(/\s+/g, ' '));
+    var txt = parts.join('\n');
+    var ok = copyText(txt);
+    var old = copyBtn.textContent;
+    var mc = document.getElementById('manualCopy');
+    var mct = document.getElementById('manualCopyText');
+    if (!ok) {
+      // 系统剪贴板不可用：显示手动复制兜底区
+      mct.value = txt;
+      mc.style.display = '';
+      copyBtn.textContent = '复制失败 · 请手动复制';
+      copyBtn.style.color = '#D64550';
+      setTimeout(function () { copyBtn.textContent = old; copyBtn.style.color = ''; }, 3000);
+    } else {
+      mc.style.display = 'none';
+      copyBtn.textContent = '已复制';
+      setTimeout(function () { copyBtn.textContent = old; }, 1600);
+    }
+  });
+
+  // ===== 计算枕高 =====
+  calcBtn.addEventListener('click', function () {
+    var age = parseFloat(ageIn.value);
+    var h = parseFloat(heightIn.value), w = parseFloat(weightIn.value);
+    var cobb = parseFloat(mCobb.value);
+    var borden = parseFloat(mBorden.value);
+    if (isNaN(age)) { alert('请填写年龄'); return; }
+    if (isNaN(h) || isNaN(w)) { alert('请填写身高与体重（用于计算 BMI）'); return; }
+    if (isNaN(cobb)) {
+      var c = currentCobb();
+      if (c != null) cobb = c;
+      else { alert('请测量或手动输入 Cobb 角'); return; }
+    }
+    if (isNaN(borden)) {
+      var bp = currentBordenPx();
+      if (bp != null) {
+        var effScale = state.scale;
+        if (!effScale && state.scaleAuto) effScale = state.scaleAuto.mmPerPx;
+        if (effScale) borden = bp * effScale;
+      }
+      if (isNaN(borden)) { alert('请测量（含标尺校准）或手动输入 Borden 值'); return; }
+    }
+    var bmi = w / Math.pow(h / 100, 2);
+    var hop = B0 + B1 * cobb + B2 * borden + B3 * age + B4 * bmi + B5 * cobb * cobb + B6 * borden * borden;
+    var hopR = Math.round(hop);
+    rHeight.innerHTML = hopR + ' <small>mm</small>';
+    var lines = '<div class="f-title">模型展开（单位：mm）</div>';
+    lines += fRow('常数项', B0.toFixed(2));
+    lines += fRow('1.88 × Cobb(' + cobb.toFixed(1) + '°)', (B1 * cobb).toFixed(2));
+    lines += fRow('2.17 × Borden(' + borden.toFixed(1) + 'mm)', (B2 * borden).toFixed(2));
+    lines += fRow('0.13 × 年龄(' + age.toFixed(0) + '岁)', (B3 * age).toFixed(2));
+    lines += fRow('0.58 × BMI(' + bmi.toFixed(1) + ')', (B4 * bmi).toFixed(2));
+    lines += fRow('−0.031 × Cobb²(' + cobb.toFixed(1) + '²)', (B5 * cobb * cobb).toFixed(2));
+    lines += fRow('−0.051 × Borden²(' + borden.toFixed(1) + '²)', (B6 * borden * borden).toFixed(2));
+    lines += '<div class="f-line f-total"><span class="k">推荐枕高 H<sub>opt</sub></span><span class="v">' + hop.toFixed(2) + ' → ' + hopR + ' mm</span></div>';
+    formulaBox.innerHTML = lines;
+
+    var notes = [], problems = [];
+    if (cobb < 0 || cobb > 45) problems.push('Cobb 角异常（' + cobb.toFixed(1) + '°，常见范围约 0–45°）');
+    if (borden < 0 || borden > 15) problems.push('Borden 值异常（' + borden.toFixed(1) + ' mm，常见范围约 0–15 mm）');
+    if (bmi < 15 || bmi > 40) problems.push('BMI 异常（' + bmi.toFixed(1) + '）');
+    if (hopR < 40 || hopR > 150) problems.push('预测枕高超出常见区间（40–150 mm），请复核测量');
+    if (problems.length) {
+      noticeBox.className = 'notice danger';
+      noticeBox.innerHTML = warnIcon() + '<span>输入可能异常：' + problems.join('；') + '。建议复核测量数据，并与专业医生确认后再定制枕头。</span>';
+    } else {
+      noticeBox.className = 'notice';
+      noticeBox.innerHTML = warnIcon() + '<span>模型基于健康人群数据库以正常值为约束；临床定制前请结合医生评估。若测量误差超过 5mm，建议由专业医生指导定制枕头。</span>';
+    }
+    resultCard.classList.add('show');
+  });
+
+  function fRow(k, v) {
+    return '<div class="f-line"><span class="k">' + k + '</span><span class="v">' + v + '</span></div>';
+  }
+  function warnIcon() {
+    return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3L2 20h20L12 3z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>';
+  }
+
+  updateGuide();
+})();
+
 </script>
 </body>
 </html>
