@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -1169,7 +1169,6 @@ updatePillow();
 })();
 </script>
 <script>
-
 (function () {
   'use strict';
 
@@ -1208,13 +1207,25 @@ updatePillow();
   var MODE = { CALIB: 'calib', COBB: 'cobb', BORDEN: 'borden' };
   var state = {
     img: null,
+    origFile: null,
     mode: null,
     calibPts: [], calibLen: null, scale: null,
     cobbPts: [], bordenPts: [], curve: [],
     scaleAuto: null, anatRefMm: 100,
     autoDone: false,
-    overlayHidden: false  // 自动测完后隐藏标注线，只保留原图；手动开始点位复核时打开
+    aiPts: [], // AI 识别的 13 个关键点（已映射到 canvas 坐标）
+    aiLabels: [], // 对应标签
+    cobbSys: null, // 在线系统「计算 Cobb 角」接口返回的权威角度（与在线系统完全一致）
+    cobbMode: null,
+    autoReqId: 0 // 自动测量请求版本号，换图后旧请求结果直接丢弃
   };
+
+  // ===== 在线 AI 识别服务（颈椎关键点检测与测量系统）=====
+  // 复刻 http://106.53.21.26:2778 的测量方法：
+  // AI 识别 13 个关键点（C2×3 + C3~C7×2），Cobb 角 = C2 下缘线 与 C7 下缘线的夹角
+  var AI_SERVER = 'http://106.53.21.26:2778';
+  var AI_FN_INDEX = 0;   // identify_and_update
+  var AI_TRIGGER_ID = 5;
   var redrawQueued = false;
   var drag = null; // {type, idx}
 
@@ -1237,16 +1248,19 @@ updatePillow();
       var img = new Image();
       img.onload = function () {
         state.img = img;
+        state.origFile = file;
         state.calibPts = []; state.cobbPts = []; state.bordenPts = []; state.curve = [];
         state.calibLen = null; state.scale = null; state.scaleAuto = null; state.autoDone = false;
-        state.overlayHidden = false;
+        state.aiPts = []; state.aiLabels = [];
+        state.cobbMode = null; state.cobbSys = null;
+        state.autoReqId++; // 换图后旧AI请求结果作废
         anatRefBox.style.display = 'none';
         resetReadouts();
         fitCanvas(img);
         uploadBox.style.display = 'none';
         stage.style.display = 'block';
         autoStatus.style.display = 'none';
-        setMode(MODE.COBB);
+        setMode(MODE.CALIB);
         redraw();
       };
       img.src = ev.target.result;
@@ -1292,9 +1306,10 @@ updatePillow();
   }
 
   function resetAll() {
-    state.img = null; state.calibPts = []; state.cobbPts = []; state.bordenPts = []; state.curve = [];
+    state.img = null; state.origFile = null;
+    state.calibPts = []; state.cobbPts = []; state.bordenPts = []; state.curve = [];
     state.calibLen = null; state.scale = null; state.scaleAuto = null; state.autoDone = false;
-    state.overlayHidden = false;
+    state.aiPts = []; state.aiLabels = [];
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     canvas.width = 1; canvas.height = 1;
     stage.style.display = 'none'; uploadBox.style.display = '';
@@ -1348,7 +1363,6 @@ updatePillow();
   // ===== 画布交互（点击添加 + 拖拽微调） =====
   canvas.addEventListener('mousedown', function (e) {
     if (!state.img) return;
-    state.overlayHidden = false;  // 用户手动开始点位操作，显示标注线
     var p = toCanvas(e);
     var hit = hitTest(p);
     if (hit) { drag = hit; canvas.style.cursor = 'grabbing'; return; }
@@ -1430,6 +1444,8 @@ updatePillow();
 
   // ===== 计算 =====
   function currentCobb() {
+    // AI 识别模式下优先返回在线系统的权威角度（保证与在线系统完全一致）
+    if (state.cobbMode === 'ai' && state.cobbSys != null) return state.cobbSys;
     if (state.cobbPts.length === 4) return angleDeg(state.cobbPts[0], state.cobbPts[1], state.cobbPts[2], state.cobbPts[3]);
     return null;
   }
@@ -1443,7 +1459,8 @@ updatePillow();
     if (cobb != null) {
       measCobb.classList.remove('pending');
       var ctag = '';
-      if (state.cobbMode === 'estimate') ctag = '<span class="tag tag-est">模糊估计</span>';
+      if (state.cobbMode === 'ai') ctag = '<span class="tag">AI识别</span>';
+      else if (state.cobbMode === 'estimate') ctag = '<span class="tag tag-est">模糊估计</span>';
       else if (state.cobbMode === 'lowconf') ctag = '<span class="tag tag-est">低置信度</span>';
       else if (state.autoDone) ctag = '<span class="tag">自动</span>';
       cobbVal.innerHTML = cobb.toFixed(1) + ' <small>°</small>' + ctag;
@@ -1460,13 +1477,6 @@ updatePillow();
       }
       if (effScale) bordenVal.innerHTML = (bp * effScale).toFixed(1) + ' <small>mm</small>' + btag;
       else bordenVal.innerHTML = bp.toFixed(0) + ' <small>px · 需标尺</small>';
-    } else {
-      measBorden.classList.add('pending');
-      bordenVal.innerHTML = '未测量';
-    }
-    if (cobb == null) {
-      measCobb.classList.add('pending');
-      cobbVal.innerHTML = '未测量';
     }
     var sh = [];
     if (state.scale) sh.push('比例尺（手动标尺校准）：1px ≈ ' + state.scale.toFixed(3) + ' mm');
@@ -1477,7 +1487,6 @@ updatePillow();
   }
 
   // ===== 绘制 =====
-  // 只画原始 X 光片，不画任何标注线/点位（用户要求图上干净，数值看右侧面板）
   function redraw() {
     if (!state.img) return;
     if (redrawQueued) return;
@@ -1486,6 +1495,7 @@ updatePillow();
       redrawQueued = false;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(state.img, 0, 0, canvas.width, canvas.height);
+      // 按用户要求：自动测量后不画任何标注线/点位，只看右侧读数卡片
     });
   }
 
@@ -1511,7 +1521,7 @@ updatePillow();
   }
 
   // ============================================================
-  //  自动测量：图像处理检测椎体后缘与终板
+  //  自动测量：Borden 用本地图像处理（椎体后缘曲线）；Cobb 用在线 AI 关键点检测（复刻 106.53.21.26:2778）
   // ============================================================
   autoBtn.addEventListener('click', function () {
     if (!state.img) return;
@@ -1521,35 +1531,197 @@ updatePillow();
   function runAuto() {
     autoBtn.disabled = true;
     autoStatus.style.display = 'block';
-    autoStatus.textContent = '正在分析图像…';
+    cobbVal.innerHTML = '<small style="color:#94a3b8;">AI识别中…</small>';
+    measCobb.classList.remove('pending');
+    autoStatus.textContent = '测量中…';
+    // 1) 本地 Borden / 后缘检测（同步）
     var res = detect(state.img);
-    autoBtn.disabled = false;
-    if (!res.ok) {
-      autoStatus.style.display = 'block';
-      autoStatus.textContent = res.message;
-      return;
-    }
-    autoStatus.style.display = 'block';
-    autoStatus.textContent = '自动测量完成';
-    if (res.cobbPts) state.cobbPts = res.cobbPts;
-    else state.cobbPts = [];
-    state.cobbMode = res.cobbMode || null;
-    if (res.bordenPts) state.bordenPts = res.bordenPts;
-    state.curve = res.curve || [];
-    state.scaleAuto = res.scaleAuto || null;
-    if (state.scaleAuto && state.scaleAuto.mode === 'anat') {
-      state.anatBasePx = state.scaleAuto.basePx;
-      anatRefBox.style.display = '';
+    if (res.ok) {
+      if (res.bordenPts) state.bordenPts = res.bordenPts;
+      state.curve = res.curve || [];
+      state.scaleAuto = res.scaleAuto || null;
+      if (state.scaleAuto && state.scaleAuto.mode === 'anat') {
+        state.anatBasePx = state.scaleAuto.basePx;
+        anatRefBox.style.display = '';
+      } else {
+        state.anatBasePx = null;
+        anatRefBox.style.display = 'none';
+      }
+      state.autoDone = true;
+      autoStatus.textContent = '测量中…';
     } else {
-      state.anatBasePx = null;
-      anatRefBox.style.display = 'none';
+      state.bordenPts = [];
+      state.curve = [];
+      autoStatus.textContent = '本地后缘检测未完成（' + res.message + '）；正在尝试 AI 关键点识别…';
     }
-    state.autoDone = true;
-    state.overlayHidden = true;  // 自动测完隐藏标注线
-    emptyTip.style.display = 'none';
     updateGuide(); recompute(); redraw();
+    // 2) 在线 AI 识别 Cobb（异步，复刻「颈椎关键点检测与测量系统」方法）
+    var myReqId = state.autoReqId;
+    aiIdentify().then(function (ai) {
+      if (myReqId !== state.autoReqId) return; // 已换图，丢弃旧结果
+      state.cobbPts = ai.cobbPts;
+      state.aiPts = ai.aiPts;
+      state.aiLabels = ai.aiLabels;
+      state.cobbMode = 'ai';
+      state.autoDone = true;
+      state.cobbSys = ai.cobb;
+      autoBtn.disabled = false;
+      autoStatus.textContent = '自动测量完成';
+      updateGuide(); recompute(); redraw();
+    }).catch(function (err) {
+      if (myReqId !== state.autoReqId) return; // 已换图，丢弃旧结果
+      autoBtn.disabled = false;
+      state.cobbPts = state.cobbPts || [];
+      state.cobbMode = null;
+      autoStatus.textContent = '自动测量完成';
+      updateGuide(); recompute(); redraw();
+    });
   }
 
+  // ===== 在线 AI 关键点识别（复刻 106.53.21.26:2778 的方法） =====
+  // 上传影像 → queue/join 提交识别 → SSE 读取结果 → 解析 LabelMe 13 关键点
+  // Cobb 角 = C2 下缘线（bottom left→bottom right）与 C7 下缘线（bottom left→bottom right）的夹角
+  function aiIdentify() {
+    return new Promise(function (resolve, reject) {
+      if (!state.origFile) { reject(new Error('未找到原始影像文件，请重新上传')); return; }
+      var file = state.origFile;
+      var fd = new FormData();
+      fd.append('files', file, file.name);
+      fetch(AI_SERVER + '/gradio_api/upload', { method: 'POST', body: fd })
+        .then(function (r) { if (!r.ok) throw new Error('上传失败 HTTP ' + r.status); return r.json(); })
+        .then(function (paths) {
+          var path = paths[0];
+          var fileObj = {
+            path: path,
+            url: AI_SERVER + '/gradio_api/file=' + path,
+            orig_name: file.name,
+            size: file.size,
+            mime_type: file.type || 'image/jpeg',
+            meta: { _type: 'gradio.FileData' }
+          };
+          var sh = 's' + Math.random().toString(36).slice(2, 12);
+          var body = JSON.stringify({
+            data: [fileObj],
+            event_data: fileObj,
+            fn_index: AI_FN_INDEX,
+            trigger_id: AI_TRIGGER_ID,
+            session_hash: sh
+          });
+          return fetch(AI_SERVER + '/gradio_api/queue/join', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: body
+          }).then(function (r) {
+            if (!r.ok) throw new Error('提交识别失败 HTTP ' + r.status);
+            return r.json();
+          }).then(function (j) {
+            if (!j.event_id) throw new Error('未获取到识别任务');
+            return { sh: sh, evid: j.event_id };
+          });
+        })
+        .then(function (q) {
+          return fetch(AI_SERVER + '/gradio_api/queue/data?session_hash=' + q.sh)
+            .then(function (r) { if (!r.ok) throw new Error('读取结果失败 HTTP ' + r.status); return readSSE(r); })
+            .then(function (output) {
+              var ai = parseAIResult(output);
+              // 复用同一会话调用在线系统「计算 Cobb 角」接口，取得与在线系统完全一致的权威角度
+              return fetch(AI_SERVER + '/gradio_api/queue/join', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ data: [null], fn_index: 3, trigger_id: 15, session_hash: q.sh })
+              }).then(function (r) {
+                if (!r.ok) throw new Error('提交 Cobb 角计算失败 HTTP ' + r.status);
+                return r.json();
+              }).then(function (j) {
+                if (!j.event_id) throw new Error('未获取到 Cobb 角计算任务');
+                return fetch(AI_SERVER + '/gradio_api/queue/data?session_hash=' + q.sh)
+                  .then(function (r) { if (!r.ok) throw new Error('读取 Cobb 角失败 HTTP ' + r.status); return readSSE(r); })
+                  .then(function (output2) {
+                    if (output2 && output2[1]) {
+                      var m = String(output2[1]).match(/(\d+(?:\.\d+)?)/);
+                      if (m) ai.cobb = parseFloat(m[1]);
+                    }
+                    return ai;
+                  });
+              }).catch(function () { return ai; }); // 在线角度计算不可用时，回退到本地公式
+            })
+            .then(function (ai) { resolve(ai); });
+        })
+        .catch(function (e) { reject(e); });
+    });
+  }
+
+  // 读取 Gradio SSE 结果流，返回 process_completed 的 output.data 数组
+  function readSSE(resp) {
+    return new Promise(function (resolve, reject) {
+      var reader = resp.body.getReader();
+      var decoder = new TextDecoder();
+      var buf = '';
+      var deadline = Date.now() + 70000;
+      function tryParse() {
+        var idx = buf.indexOf('process_completed');
+        if (idx < 0) return false;
+        var start = buf.lastIndexOf('data:', idx);
+        if (start < 0) return false;
+        var end = buf.indexOf('\n', start);
+        var line = buf.slice(start + 5, end < 0 ? buf.length : end).trim();
+        try {
+          var obj = JSON.parse(line);
+          if (obj.output) {
+            if (obj.output.error) { reject(new Error(obj.output.error)); return true; }
+            if (obj.output.data) { resolve(obj.output.data); return true; }
+          }
+        } catch (e) { /* 继续读后续块 */ }
+        return false;
+      }
+      function pump() {
+        if (Date.now() > deadline) { reject(new Error('AI 识别超时')); return; }
+        reader.read().then(function (r) {
+          if (r.done) { reject(new Error('识别连接提前结束')); return; }
+          buf += decoder.decode(r.value, { stream: true });
+          if (tryParse()) return;
+          pump();
+        }).catch(function (e) { reject(e); });
+      }
+      pump();
+    });
+  }
+
+  // 解析 AI 返回：output.data[2] 为 LabelMe 格式 JSON（13 关键点）
+  // 坐标按原图像素给出，需映射到 canvas 坐标系
+  function parseAIResult(output) {
+    if (!output || output.length < 2) throw new Error('AI 返回数据不完整');
+    var raw = output[1];
+    var ai = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    if (!ai || !ai.shapes || !ai.shapes.length) throw new Error('AI 未识别到关键点');
+    var imgW = ai.imageWidth || 1, imgH = ai.imageHeight || 1;
+    var sx = canvas.width / imgW, sy = canvas.height / imgH;
+    var aiPts = [], aiLabels = [];
+    function findPt(label) {
+      for (var i = 0; i < ai.shapes.length; i++) {
+        if (ai.shapes[i].label === label && ai.shapes[i].points && ai.shapes[i].points.length) {
+          return { x: ai.shapes[i].points[0][0] * sx, y: ai.shapes[i].points[0][1] * sy };
+        }
+      }
+      return null;
+    }
+    for (var i = 0; i < ai.shapes.length; i++) {
+      var s = ai.shapes[i];
+      if (!s.points || !s.points.length) continue;
+      aiPts.push({ x: s.points[0][0] * sx, y: s.points[0][1] * sy });
+      aiLabels.push(s.label || ('pt' + i));
+    }
+    var c2bl = findPt('C2 bottom left'), c2br = findPt('C2 bottom right');
+    var c7bl = findPt('C7 bottom left'), c7br = findPt('C7 bottom right');
+    var cobbPts = [];
+    var cobb = null;
+    if (c2bl && c2br && c7bl && c7br) {
+      cobbPts = [c2bl, c2br, c7bl, c7br];
+      cobb = angleDeg(c2bl, c2br, c7bl, c7br);
+    }
+    if (!cobbPts.length) throw new Error('未定位到 C2/C7 下缘关键点');
+    return { cobbPts: cobbPts, aiPts: aiPts, aiLabels: aiLabels, cobb: cobb };
+  }
   // 自动检测主流程（工作于 canvas 显示分辨率）
   // v3 方案：垂直边界追踪提取椎体后缘 + 鲁棒三次拟合 + 终板方向估计（失败降级）
   function detect(img) {
@@ -1632,131 +1804,13 @@ updatePillow();
 
     // 7) Borden：基准线端点依赖 Cobb 定位的 C2/C7 下终板行，故移到 Cobb 检测之后计算
 
-    // 8) Cobb：三级策略——①精确终板扫描 → ②低阈值扫描 → ③后缘曲度模糊估计（用户可接受相对模糊）
-    var L = Math.round(Math.min(34, W * 0.13)); // 终板线半长（随图宽缩放）
-    function platePts(p, angDeg, half) {
-      var rad = angDeg * Math.PI / 180;
-      var dx = Math.cos(rad) * half, dy = Math.sin(rad) * half;
-      return [ { x: p.x - dx, y: p.y - dy }, { x: p.x + dx, y: p.y + dy } ];
-    }
+    // 8) Cobb：已改为在线 AI 关键点检测（runAuto 中调用 aiIdentify 完成），
+    //    本地不再做 CV 终板检测；Borden 端点降级用后缘曲线两端
     var clen = curve.length;
-    var ww = Math.round(Math.min(90, W * 0.35)), hh = Math.round(Math.min(46, H * 0.16));
-    var cobbPts = null, cobbWarn = null, cobbMode = null;
-    var angTop = null, angBot = null, pTop = null, pBot = null;
-    // ① v5：按椎体序列定位 C2 下终板（约后缘顶+1.0h）与 C7 下终板（约后缘底-0.5h），
-    //    亮暗对比（终板=椎体亮区与椎间隙暗区边界）确定终板行，再拟合水平边缘角度；三级阈值
     var tp0 = curve[0], bp0 = curve[clen - 1];
-    var hBody = Math.max(50, (bp0.y - tp0.y) / 6);
-    var c2lo = tp0.y + 0.75 * hBody, c2hi = tp0.y + 1.45 * hBody;
-    var c7lo = bp0.y - 1.4 * hBody, c7hi = bp0.y - 0.5 * hBody;
     function yToIdx(y) { return Math.max(0, Math.min(clen - 1, Math.round((y - tp0.y) / Math.max(1, bp0.y - tp0.y) * clen))); }
-    var c2A = yToIdx(c2lo), c2B = yToIdx(c2hi);
-    var c7A = yToIdx(c7lo), c7B = yToIdx(c7hi);
-    function rowMeanAt(cx, cy, halfW) {
-      var x0 = Math.max(0, Math.round(cx - halfW)), x1 = Math.min(W - 1, Math.round(cx + halfW));
-      var y = Math.max(1, Math.min(H - 2, Math.round(cy)));
-      var sm = 0, n = 0;
-      for (var x = x0; x <= x1; x++) { sm += gs[y * W + x]; n++; }
-      return n ? sm / n : 0;
-    }
-    function fitEndplateAngle(gs, W, H, cx, y, halfW, r, gth) {
-      var pts = [];
-      for (var x = Math.max(1, Math.round(cx - halfW)); x <= Math.min(W - 2, Math.round(cx + halfW)); x++) {
-        var bg = 0, best = -1;
-        for (var yy = Math.max(1, Math.round(y - r)); yy <= Math.min(H - 2, Math.round(y + r)); yy++) {
-          var gg = Math.abs(gs[(yy + 1) * W + x] - gs[(yy - 1) * W + x]);
-          if (gg > bg) { bg = gg; best = yy; }
-        }
-        if (bg >= gth) pts.push({ x: x, y: best, wt: bg });
-      }
-      if (pts.length < 10) return null;
-      var cur = pts.slice();
-      for (var iter = 0; iter < 3 && cur.length >= 10; iter++) {
-        var sx = 0, sy = 0, sxx = 0, sxy = 0, sw = 0;
-        for (var i = 0; i < cur.length; i++) { var q = cur[i]; sx += q.x * q.wt; sy += q.y * q.wt; sxx += q.x * q.x * q.wt; sxy += q.x * q.y * q.wt; sw += q.wt; }
-        var mx = sx / sw, my = sy / sw;
-        var denom = sxx - sw * mx * mx;
-        if (Math.abs(denom) < 1e-6) break;
-        var a = (sxy - sw * mx * my) / denom;
-        var resid = cur.map(function (q) { return { q: q, r: Math.abs(q.y - (my + a * (q.x - mx))) }; });
-        resid.sort(function (u, v) { return v.r - u.r; });
-        var keep = Math.ceil(cur.length * 0.75);
-        cur = resid.slice(0, keep).map(function (u) { return u.q; });
-      }
-      var sx2 = 0, sy2 = 0, sxx2 = 0, sxy2 = 0, sw2 = 0;
-      for (var i2 = 0; i2 < cur.length; i2++) { var q2 = cur[i2]; sx2 += q2.x * q2.wt; sy2 += q2.y * q2.wt; sxx2 += q2.x * q2.x * q2.wt; sxy2 += q2.x * q2.y * q2.wt; sw2 += q2.wt; }
-      var mx2 = sx2 / sw2, my2 = sy2 / sw2;
-      var denom2 = sxx2 - sw2 * mx2 * mx2;
-      if (Math.abs(denom2) < 1e-6) return null;
-      var a2 = (sxy2 - sw2 * mx2 * my2) / denom2;
-      var conf = cur.length / (Math.round(cx + halfW) - Math.round(cx - halfW) + 1);
-      return { ang: Math.atan(a2) * 180 / Math.PI, conf: conf, y: my2 };
-    }
-    function findEndplateSeg(curve, a, b, wantDown, gth) {
-      // 段内曲线 y 范围与平均 x（终板横贯椎体，用段内代表性 x 列扫描）
-      var minY = 1e9, maxY = -1e9, sumX = 0, cnt = 0;
-      var stepI = Math.max(1, Math.floor((b - a) / 10));
-      for (var idx = a; idx <= b; idx += stepI) {
-        var pp = curve[idx];
-        if (pp.y < minY) minY = pp.y;
-        if (pp.y > maxY) maxY = pp.y;
-        sumX += pp.x; cnt++;
-      }
-      if (!cnt) return null;
-      var cx = sumX / cnt;
-      var halfW = Math.round(ww / 2);
-      var ylo = Math.max(3, Math.round(minY - hh * 0.3)), yhi = Math.min(H - 3, Math.round(maxY + hh * 0.3));
-      // 连续扫描亮暗对比（终板=椎体亮区与椎间隙暗区边界；2px 步进保证不漏）
-      var bestY = -1, bestC = -1;
-      for (var y = ylo + 6; y <= yhi - 6; y += 2) {
-        var up = 0, dn = 0;
-        for (var dy = 1; dy <= 5; dy++) { up += rowMeanAt(cx, y - dy, halfW); dn += rowMeanAt(cx, y + dy, halfW); }
-        up /= 5; dn /= 5;
-        var cc = wantDown ? (up - dn) : (dn - up);
-        if (cc > bestC) { bestC = cc; bestY = y; }
-      }
-      if (bestY < 0 || bestC < 3) return null;
-      var r = fitEndplateAngle(gs, W, H, cx, bestY, halfW, 4, gth);
-      if (!r || Math.abs(r.ang) > 45) return null;
-      return { ang: r.ang, conf: r.conf, y: r.y, x: cx, c: bestC };
-    }
-    var gthList = [45, 25, 15];
-    for (var gi = 0; gi < gthList.length && !cobbPts; gi++) {
-      var gthNow = gthList[gi];
-      var topRes = findEndplateSeg(curve, c2A, c2B, true, gthNow);
-      var botRes = findEndplateSeg(curve, c7A, c7B, true, gthNow);
-      if (!topRes) topRes = findEndplateSeg(curve, c2A, c2B, false, gthNow);
-      if (!botRes) botRes = findEndplateSeg(curve, c7A, c7B, false, gthNow);
-      if (topRes && botRes) {
-        angTop = topRes.ang; angBot = botRes.ang;
-        pTop = { x: topRes.x, y: topRes.y }; pBot = { x: botRes.x, y: botRes.y };
-        var diff = Math.abs(angTop - angBot) % 180;
-        if (diff > 90) diff = 180 - diff;
-        if (diff >= 0.5 && diff <= 60) {
-          cobbMode = (gthNow >= 25 && topRes.conf > 0.22 && botRes.conf > 0.22) ? 'exact' : 'lowconf';
-          cobbPts = platePts(pTop, angTop, L).concat(platePts(pBot, angBot, L));
-          if (cobbMode === 'lowconf') cobbWarn = 'Cobb 为低置信度估计（C2/C7 终板影像较弱），建议拖动终板点复核。';
-          else if (diff < 2) cobbWarn = 'Cobb 角极小（颈椎生理曲度接近变直），自动检测对终板角度敏感，建议拖动终板点复核。';
-        }
-      }
-    }
-    if (!cobbPts) {
-      // ③ 后缘曲度模糊估计：上/下 1/3 后缘切线方向角之差 ≈ Cobb（终板与后缘固有夹角在两端近似抵消）
-      var aT = curveTanAngle(curve, 0, Math.floor(clen / 3));
-      var aB = curveTanAngle(curve, Math.floor(clen * 3 / 5), Math.floor(clen * 5 / 6));
-      if (aT != null && aB != null) {
-        var diff2 = Math.abs(aT - aB);
-        if (diff2 > 90) diff2 = 180 - diff2;
-        if (diff2 >= 0.5 && diff2 <= 60) {
-          cobbMode = 'estimate';
-          var L2 = Math.round(Math.min(30, W * 0.11));
-          var ptT = curve[Math.floor(clen / 6)], ptB = curve[Math.floor(clen * 5 / 6)];
-          cobbPts = platePts(ptT, aT - 90, L2).concat(platePts(ptB, aB - 90, L2));
-          cobbWarn = 'Cobb 为模糊估计（C2/C7 终板影像不清，由后缘曲度推算，非终板直接测量；术后片/过曝片误差较大，请务必拖动终板点复核）。';
-        }
-      }
-      if (!cobbPts) cobbWarn = '终板自动识别受限且无法由后缘推算，Cobb 角请手动微调终板线后获得。';
-    }
+    var cobbPts = null, cobbWarn = null, cobbMode = null;
+    var pTop = null, pBot = null;
 
     // 7) Borden（标准定义）：基准线 = C2 椎体后缘（齿状突后缘）→ C7 椎体后缘；弧线 = C3~C6 后缘；最大垂距
     //    端点用 Cobb 定位的 C2/C7 下终板行后缘点；无法定位时降级用后缘曲线两端
@@ -1772,9 +1826,7 @@ updatePillow();
     }
     var bordenPts = [top, bot, apex];
 
-    var msg = '自动检测完成：已勾勒椎体后缘并测量 Borden 值（可拖动复核）。';
-    if (cobbWarn) msg += cobbWarn;
-    else msg += 'Cobb 角已自动测量。';
+    var msg = '自动检测完成：已勾勒椎体后缘并测量 Borden 值。';
 
     // 9) 自动标尺：①片上刻度条检测 → ②C2-C7 后缘解剖估算（手动标尺校准始终最优先）
     var scaleAuto = null;
@@ -1837,37 +1889,6 @@ updatePillow();
     var rl = tryProfile(profL), rr = tryProfile(profR);
     return rl || rr || null;
   }
-
-  // 后缘曲线局部方向角（相对水平，接近 90°）：对 x = a + b*y 做最小二乘，方向角 = atan2(1, b)
-  function curveTanAngle(curve, a, b) {
-    var n = b - a;
-    if (n < 4) return null;
-    var sx = 0, sy = 0, sy2 = 0, sxy = 0;
-    for (var i = a; i < b; i++) {
-      var x = curve[i].x, y = curve[i].y;
-      sx += x; sy += y; sy2 += y * y; sxy += x * y;
-    }
-    var m = n;
-    var denom = m * sy2 - sy * sy;
-    if (Math.abs(denom) < 1e-9) return null;
-    var bb = (m * sxy - sx * sy) / denom;
-    return Math.atan2(1, bb) * 180 / Math.PI;
-  }
-
-  // 沿曲线区间多点扫描终板方向，返回 {ang, conf, pt} 或 null；gth=梯度阈值，maxAng=允许最大倾角
-  function scanCurveForPlate(gs, W, H, curve, a, b, ww, hh, gth, maxAng) {
-    var bestRes = null;
-    var step = Math.max(1, Math.floor((b - a) / 5));
-    for (var idx = a; idx <= b; idx += step) {
-      var p = curve[idx];
-      var r = dominantHorizontalAngle(gs, W, H, p.x, p.y, ww, hh, gth);
-      if (!r) continue;
-      if (Math.abs(r.ang) > maxAng) continue;
-      if (!bestRes || r.conf > bestRes.conf) bestRes = { ang: r.ang, conf: r.conf, pt: p };
-    }
-    return bestRes;
-  }
-
   // 鲁棒多项式拟合：迭代剔除离群点，返回系数数组（从高次到低次）
   function polyfitRobust(xin, yin, deg) {
     var n = xin.length;
@@ -2055,54 +2076,6 @@ updatePillow();
     }
     return out;
   }
-  // 用列梯度峰值线性拟合估计终板方向角（-90..90）；迭代剔除离群抗干扰；返回 {ang, conf} 或 null
-  function dominantHorizontalAngle(src, w, h, cx, cy, ww, hh, gth) {
-    var x0 = Math.max(1, Math.round(cx - ww / 2)), x1 = Math.min(w - 2, Math.round(cx + ww / 2));
-    var y0 = Math.max(1, Math.round(cy - hh / 2)), y1 = Math.min(h - 2, Math.round(cy + hh / 2));
-    var pts = [];
-    for (var x = x0; x <= x1; x++) {
-      var bestY = -1, bestG = 0;
-      for (var y = y0; y <= y1; y++) {
-        var g = Math.abs(src[(y + 1) * w + x] - src[(y - 1) * w + x]);
-        if (g > bestG) { bestG = g; bestY = y; }
-      }
-      if (bestG >= gth && bestY > y0 && bestY < y1) pts.push({ x: x, y: bestY, wt: bestG });
-    }
-    if (pts.length < 12) return null;
-    // 迭代：加权线性拟合 → 剔除残差最大的 25% → 再拟合（最多 3 轮）
-    var cur = pts.slice();
-    for (var iter = 0; iter < 3 && cur.length >= 12; iter++) {
-      var sx = 0, sy = 0, sxx = 0, sxy = 0, sw = 0;
-      for (var i = 0; i < cur.length; i++) {
-        var q = cur[i];
-        sx += q.x * q.wt; sy += q.y * q.wt; sxx += q.x * q.x * q.wt; sxy += q.x * q.y * q.wt; sw += q.wt;
-      }
-      var mx = sx / sw, my = sy / sw;
-      var denom = sxx - sw * mx * mx;
-      if (Math.abs(denom) < 1e-6) break;
-      var a = (sxy - sw * mx * my) / denom;
-      // 计算残差并按残差排序
-      var resid = cur.map(function (q) {
-        return { q: q, r: Math.abs(q.y - (my + a * (q.x - mx))) };
-      });
-      resid.sort(function (u, v) { return v.r - u.r; });
-      var keep = Math.ceil(cur.length * 0.75);
-      cur = resid.slice(0, keep).map(function (u) { return u.q; });
-    }
-    // 最终拟合
-    sx = 0; sy = 0; sxx = 0; sxy = 0; sw = 0;
-    for (i = 0; i < cur.length; i++) {
-      var q2 = cur[i];
-      sx += q2.x * q2.wt; sy += q2.y * q2.wt; sxx += q2.x * q2.x * q2.wt; sxy += q2.x * q2.y * q2.wt; sw += q2.wt;
-    }
-    mx = sx / sw; my = sy / sw;
-    denom = sxx - sw * mx * mx;
-    if (Math.abs(denom) < 1e-6) return null;
-    a = (sxy - sw * mx * my) / denom;
-    var ang = Math.atan(a) * 180 / Math.PI;
-    return { ang: ang, conf: cur.length / (x1 - x0 + 1) };
-  }
-
   // ===== BMI =====
   heightIn.addEventListener('input', updateBMI);
   weightIn.addEventListener('input', updateBMI);
@@ -2164,7 +2137,7 @@ updatePillow();
     var cobb = parseFloat(mCobb.value), cobbSrc = '手动输入';
     if (isNaN(cobb)) {
       var c = currentCobb();
-      if (c != null) { cobb = c; cobbSrc = state.cobbMode === 'estimate' ? '模糊估计' : (state.cobbMode === 'lowconf' ? '低置信度' : '自动测量'); }
+      if (c != null) { cobb = c; cobbSrc = state.cobbMode === 'estimate' ? '模糊估计' : (state.cobbMode === 'lowconf' ? '低置信度' : (state.cobbMode === 'ai' ? 'AI识别' : '自动测量')); }
     }
     var borden = parseFloat(mBorden.value), bSrc = '手动输入';
     if (isNaN(borden)) {
@@ -2266,7 +2239,6 @@ updatePillow();
 
   updateGuide();
 })();
-
 </script>
 </body>
 </html>
