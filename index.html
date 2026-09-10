@@ -763,8 +763,7 @@ input[type="range"]::-webkit-slider-thumb:hover { box-shadow: 0 0 0 7px rgba(90,
         <p class="sub">上传颈椎侧位 X 光片自动测量，结合基本参数预测推荐枕高</p>
         <div class="flow">
           <span class="step">上传X光片</span><span class="arr">→</span>
-          <span class="step">一键自动测量 · 自动标注</span><span class="arr">→</span>
-          <span class="step">可拖动微调复核</span><span class="arr">→</span>
+          <span class="step">一键自动测量</span><span class="arr">→</span>
           <span class="step">填基本参数 · 预测枕高</span>
         </div>
       </div>
@@ -789,21 +788,12 @@ input[type="range"]::-webkit-slider-thumb:hover { box-shadow: 0 0 0 7px rgba(90,
             <div class="auto-bar">
               <button class="auto-btn" id="autoBtn">
                 <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9"/><path d="M21 3v6h-6"/></svg>
-                自动测量并标注
+                自动测量
               </button>
               <span class="auto-note">上传后点击此按钮，自动完成 Cobb 角与 Borden 值测量</span>
             </div>
             <div class="auto-status" id="autoStatus"></div>
 
-            <div class="modes">
-              <span style="font-size:12px;color:var(--text-3);align-self:center;">复核/微调：</span>
-              <button class="mode calib-mode" data-mode="calib">标尺校准</button>
-              <button class="mode" data-mode="cobb">Cobb角点</button>
-              <button class="mode borden-mode" data-mode="borden">Borden值点</button>
-              <button class="mode" data-action="undo">撤销</button>
-              <button class="mode danger" data-action="clear">清空标注</button>
-              <button class="mode danger" data-action="reset">换图</button>
-            </div>
             <div class="guide" id="guide"></div>
             <div class="canvas-box" id="canvasBox">
               <canvas id="canvas"></canvas>
@@ -1222,7 +1212,8 @@ updatePillow();
     calibPts: [], calibLen: null, scale: null,
     cobbPts: [], bordenPts: [], curve: [],
     scaleAuto: null, anatRefMm: 100,
-    autoDone: false
+    autoDone: false,
+    overlayHidden: false  // 自动测完后隐藏标注线，只保留原图；手动开始点位复核时打开
   };
   var redrawQueued = false;
   var drag = null; // {type, idx}
@@ -1248,13 +1239,14 @@ updatePillow();
         state.img = img;
         state.calibPts = []; state.cobbPts = []; state.bordenPts = []; state.curve = [];
         state.calibLen = null; state.scale = null; state.scaleAuto = null; state.autoDone = false;
+        state.overlayHidden = false;
         anatRefBox.style.display = 'none';
         resetReadouts();
         fitCanvas(img);
         uploadBox.style.display = 'none';
         stage.style.display = 'block';
         autoStatus.style.display = 'none';
-        setMode(MODE.CALIB);
+        setMode(MODE.COBB);
         redraw();
       };
       img.src = ev.target.result;
@@ -1302,6 +1294,7 @@ updatePillow();
   function resetAll() {
     state.img = null; state.calibPts = []; state.cobbPts = []; state.bordenPts = []; state.curve = [];
     state.calibLen = null; state.scale = null; state.scaleAuto = null; state.autoDone = false;
+    state.overlayHidden = false;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     canvas.width = 1; canvas.height = 1;
     stage.style.display = 'none'; uploadBox.style.display = '';
@@ -1355,6 +1348,7 @@ updatePillow();
   // ===== 画布交互（点击添加 + 拖拽微调） =====
   canvas.addEventListener('mousedown', function (e) {
     if (!state.img) return;
+    state.overlayHidden = false;  // 用户手动开始点位操作，显示标注线
     var p = toCanvas(e);
     var hit = hitTest(p);
     if (hit) { drag = hit; canvas.style.cursor = 'grabbing'; return; }
@@ -1483,6 +1477,7 @@ updatePillow();
   }
 
   // ===== 绘制 =====
+  // 只画原始 X 光片，不画任何标注线/点位（用户要求图上干净，数值看右侧面板）
   function redraw() {
     if (!state.img) return;
     if (redrawQueued) return;
@@ -1491,53 +1486,6 @@ updatePillow();
       redrawQueued = false;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(state.img, 0, 0, canvas.width, canvas.height);
-
-      if (state.curve.length >= 2) {
-        // 后缘曲线（自动检测勾勒）
-        ctx.beginPath();
-        ctx.moveTo(state.curve[0].x, state.curve[0].y);
-        for (var cv = 1; cv < state.curve.length; cv++) ctx.lineTo(state.curve[cv].x, state.curve[cv].y);
-        ctx.strokeStyle = 'rgba(248,113,113,0.9)'; ctx.lineWidth = 2; ctx.stroke();
-        var bp0 = state.curve[0], bp1 = state.curve[state.curve.length - 1];
-        drawLine(bp0, bp1, 'rgba(56,189,248,0.85)', 1.5, [6, 4]);
-        drawText('后缘基线', (bp0.x + bp1.x) / 2, (bp0.y + bp1.y) / 2 - 8, '#60A5FA', 11);
-      }
-      if (state.calibPts.length) {
-        drawPts(state.calibPts, '#FBBF24', 5);
-        if (state.calibPts.length === 2) {
-          drawLine(state.calibPts[0], state.calibPts[1], '#FBBF24', 1.5, [6, 4]);
-          var cm = mid(state.calibPts[0], state.calibPts[1]);
-          drawText(state.calibLen != null ? state.calibLen + ' mm' : '标尺', cm.x, cm.y - 6, '#FBBF24');
-        }
-      }
-      if (state.cobbPts.length >= 2) {
-        drawPts(state.cobbPts.slice(0, 2), '#38BDF8', 5);
-        drawLine(state.cobbPts[0], state.cobbPts[1], '#38BDF8', 2.5);
-        drawText('C2', mid(state.cobbPts[0], state.cobbPts[1]).x, mid(state.cobbPts[0], state.cobbPts[1]).y - 8, '#38BDF8');
-      }
-      if (state.cobbPts.length >= 4) {
-        drawPts(state.cobbPts.slice(2, 4), '#38BDF8', 5);
-        drawLine(state.cobbPts[2], state.cobbPts[3], '#38BDF8', 2.5);
-        drawText('C7', mid(state.cobbPts[2], state.cobbPts[3]).x, mid(state.cobbPts[2], state.cobbPts[3]).y - 8, '#38BDF8');
-        var cd = angleDeg(state.cobbPts[0], state.cobbPts[1], state.cobbPts[2], state.cobbPts[3]);
-        drawText('Cobb ' + cd.toFixed(1) + '°', 12, 22, '#38BDF8', 14);
-      }
-      if (state.bordenPts.length >= 1) drawPts([state.bordenPts[0]], '#2DD4BF', 5);
-      if (state.bordenPts.length >= 2) {
-        drawPts([state.bordenPts[1]], '#2DD4BF', 5);
-        drawLine(state.bordenPts[0], state.bordenPts[1], '#2DD4BF', 2.5);
-        drawText('基线', mid(state.bordenPts[0], state.bordenPts[1]).x, mid(state.bordenPts[0], state.bordenPts[1]).y - 8, '#2DD4BF');
-      }
-      if (state.bordenPts.length >= 3) {
-        drawPts([state.bordenPts[2]], '#2DD4BF', 5);
-        var foot = footOf(state.bordenPts[2], state.bordenPts[0], state.bordenPts[1]);
-        drawLine(state.bordenPts[2], foot, '#2DD4BF', 1.5, [4, 3]);
-        drawText('曲度', state.bordenPts[2].x + 6, state.bordenPts[2].y - 6, '#2DD4BF');
-        if (state.scale) {
-          var bv = pointLineDist(state.bordenPts[2], state.bordenPts[0], state.bordenPts[1]) * state.scale;
-          drawText('Borden ' + bv.toFixed(1) + ' mm', 12, 42, '#2DD4BF', 14);
-        }
-      }
     });
   }
 
@@ -1582,7 +1530,7 @@ updatePillow();
       return;
     }
     autoStatus.style.display = 'block';
-    autoStatus.textContent = res.message;
+    autoStatus.textContent = '自动测量完成';
     if (res.cobbPts) state.cobbPts = res.cobbPts;
     else state.cobbPts = [];
     state.cobbMode = res.cobbMode || null;
@@ -1597,6 +1545,7 @@ updatePillow();
       anatRefBox.style.display = 'none';
     }
     state.autoDone = true;
+    state.overlayHidden = true;  // 自动测完隐藏标注线
     emptyTip.style.display = 'none';
     updateGuide(); recompute(); redraw();
   }
