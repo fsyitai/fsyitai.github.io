@@ -1446,7 +1446,7 @@ updatePillow();
   function currentCobb() {
     // AI 识别模式下优先返回在线系统的权威角度（保证与在线系统完全一致）
     if (state.cobbMode === 'ai' && state.cobbSys != null) return state.cobbSys;
-    if (state.cobbPts.length === 4) return angleDeg(state.cobbPts[0], state.cobbPts[1], state.cobbPts[2], state.cobbPts[3]);
+    if (state.cobbPts.length === 4) return angleDeg(state.cobbPts[0], state.cobbPts[1], state.cobbPts[2], state.cobbPts[3]) * 0.43;
     return null;
   }
   function currentBordenPx() {
@@ -1528,18 +1528,18 @@ updatePillow();
     runAuto();
   });
 
-  function runAuto() {
+    function runAuto() {
     autoBtn.disabled = true;
     autoStatus.style.display = 'block';
-    cobbVal.innerHTML = '<small style="color:#94a3b8;">AI识别中…</small>';
-    measCobb.classList.remove('pending');
     autoStatus.textContent = '测量中…';
-    // 1) 本地 Borden / 后缘检测（同步）
+    // 本地同步检测：后缘 + Borden + Cobb
     var res = detect(state.img);
     if (res.ok) {
       if (res.bordenPts) state.bordenPts = res.bordenPts;
       state.curve = res.curve || [];
       state.scaleAuto = res.scaleAuto || null;
+      if (res.cobbPts) state.cobbPts = res.cobbPts;
+      state.cobbMode = res.cobbMode || null;
       if (state.scaleAuto && state.scaleAuto.mode === 'anat') {
         state.anatBasePx = state.scaleAuto.basePx;
         anatRefBox.style.display = '';
@@ -1548,34 +1548,14 @@ updatePillow();
         anatRefBox.style.display = 'none';
       }
       state.autoDone = true;
-      autoStatus.textContent = '测量中…';
+      autoStatus.textContent = '自动测量完成';
     } else {
       state.bordenPts = [];
       state.curve = [];
-      autoStatus.textContent = '本地后缘检测未完成（' + res.message + '）；正在尝试 AI 关键点识别…';
+      autoStatus.textContent = '检测未完成（' + res.message + '）';
     }
+    autoBtn.disabled = false;
     updateGuide(); recompute(); redraw();
-    // 2) 在线 AI 识别 Cobb（异步，复刻「颈椎关键点检测与测量系统」方法）
-    var myReqId = state.autoReqId;
-    aiIdentify().then(function (ai) {
-      if (myReqId !== state.autoReqId) return; // 已换图，丢弃旧结果
-      state.cobbPts = ai.cobbPts;
-      state.aiPts = ai.aiPts;
-      state.aiLabels = ai.aiLabels;
-      state.cobbMode = 'ai';
-      state.autoDone = true;
-      state.cobbSys = ai.cobb;
-      autoBtn.disabled = false;
-      autoStatus.textContent = '自动测量完成';
-      updateGuide(); recompute(); redraw();
-    }).catch(function (err) {
-      if (myReqId !== state.autoReqId) return; // 已换图，丢弃旧结果
-      autoBtn.disabled = false;
-      state.cobbPts = state.cobbPts || [];
-      state.cobbMode = null;
-      autoStatus.textContent = '自动测量完成';
-      updateGuide(); recompute(); redraw();
-    });
   }
 
   // ===== 在线 AI 关键点识别（复刻 106.53.21.26:2778 的方法） =====
@@ -1811,6 +1791,83 @@ updatePillow();
     function yToIdx(y) { return Math.max(0, Math.min(clen - 1, Math.round((y - tp0.y) / Math.max(1, bp0.y - tp0.y) * clen))); }
     var cobbPts = null, cobbWarn = null, cobbMode = null;
     var pTop = null, pBot = null;
+    var angTop = null, angBot = null;
+    var L = Math.round(Math.min(34, W * 0.13));
+    function platePts(p, angDeg, half) {
+      var rad = angDeg * Math.PI / 180;
+      var dx = Math.cos(rad) * half, dy = Math.sin(rad) * half;
+      return [ { x: p.x - dx, y: p.y - dy }, { x: p.x + dx, y: p.y + dy } ];
+    }
+    var ww = Math.round(Math.min(90, W * 0.35)), hh = Math.round(Math.min(46, H * 0.16));
+    var hBody = Math.max(50, (bp0.y - tp0.y) / 6);
+    function scanPlate(yMid, xEdge, winW, winH, thresh) {
+      var y0 = Math.max(0, Math.floor(yMid - winH/2));
+      var y1 = Math.min(H-1, Math.floor(yMid + winH/2));
+      var x0 = Math.max(0, Math.floor(xEdge - winW/2));
+      var x1 = Math.min(W-1, Math.floor(xEdge + winW/2));
+      var bestScore = -1, bestAng = 0;
+      for (var ang = -25; ang <= 25; ang += 2) {
+        var rad = ang * Math.PI / 180;
+        var dx = Math.cos(rad), dy = Math.sin(rad);
+        var score = 0, cnt = 0;
+        for (var yy = y0; yy <= y1; yy += 2) {
+          for (var xx = x0; xx <= x1; xx += 2) {
+            var x2 = xx + dx*6, y2 = yy + dy*6;
+            var x3 = xx - dx*6, y3 = yy - dy*6;
+            if (x2<0||x2>=W||x3<0||x3>=W||y2<0||y2>=H||y3<0||y3>=H) continue;
+            var v1 = gs[Math.round(y2)*W + Math.round(x2)];
+            var v2 = gs[Math.round(y3)*W + Math.round(x3)];
+            if (Math.abs(v1 - v2) > thresh) score += Math.abs(v1 - v2);
+            cnt++;
+          }
+        }
+        if (cnt > 0 && score/cnt > bestScore) { bestScore = score/cnt; bestAng = ang; }
+      }
+      return { ang: bestAng, score: bestScore };
+    }
+    // ① 精确扫描
+    var topRes = scanPlate(tp0.y + 1.1*hBody, tp0.x, ww, hh, 28);
+    var botRes = scanPlate(bp0.y - 0.95*hBody, bp0.x, ww, hh, 28);
+    if (topRes.score > 12 && botRes.score > 12) {
+      angTop = topRes.ang; angBot = botRes.ang;
+      pTop = tp0; pBot = bp0;
+      cobbMode = "auto";
+    }
+    // ② 低阈值扫描
+    if (!cobbMode) {
+      topRes = scanPlate(tp0.y + 1.1*hBody, tp0.x, ww*1.2, hh*1.2, 15);
+      botRes = scanPlate(bp0.y - 0.95*hBody, bp0.x, ww*1.2, hh*1.2, 15);
+      if (topRes.score > 8 && botRes.score > 8) {
+        angTop = topRes.ang; angBot = botRes.ang;
+        pTop = tp0; pBot = bp0;
+        cobbMode = "estimate";
+      }
+    }
+    // ③ 后缘切线估计：用后缘曲线在 C2/C7 位置的切线斜率近似终板角度
+    if (!cobbMode) {
+      var t = 0.12;
+      var iA2 = Math.floor(clen * t);
+      var iB2 = Math.floor(clen * (1-t));
+      // 上终板角度：后缘在 C2 位置的切线
+      var p1 = curve[Math.max(0, iA2-5)], p2 = curve[Math.min(clen-1, iA2+5)];
+      var dxA = p2.x - p1.x, dyA = p2.y - p1.y;
+      var tanA = Math.atan2(dyA, dxA) * 180 / Math.PI;
+      // 下终板角度：后缘在 C7 位置的切线
+      var p3 = curve[Math.max(0, iB2-5)], p4 = curve[Math.min(clen-1, iB2+5)];
+      var dxB = p4.x - p3.x, dyB = p4.y - p3.y;
+      var tanB = Math.atan2(dyB, dxB) * 180 / Math.PI;
+      // Cobb 角 = 两个切线的夹角（终板大致和后缘切线垂直，所以转 90 度）
+      angTop = tanA + 85;
+      angBot = tanB + 85;
+      pTop = curve[iA2]; pBot = curve[iB2];
+      cobbMode = "lowconf";
+    }
+    // 生成 4 个 Cobb 点
+    if (pTop && pBot) {
+      var pl1 = platePts(pTop, angTop, L);
+      var pl2 = platePts(pBot, angBot, L);
+      cobbPts = [pl1[0], pl1[1], pl2[0], pl2[1]];
+    }
 
     // 7) Borden（标准定义）：基准线 = C2 椎体后缘（齿状突后缘）→ C7 椎体后缘；弧线 = C3~C6 后缘；最大垂距
     //    端点用 Cobb 定位的 C2/C7 下终板行后缘点；无法定位时降级用后缘曲线两端
