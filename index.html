@@ -1223,7 +1223,9 @@ updatePillow();
   // ===== 在线 AI 识别服务（颈椎关键点检测与测量系统）=====
   // 复刻 http://106.53.21.26:2778 的测量方法：
   // AI 识别 13 个关键点（C2×3 + C3~C7×2），Cobb 角 = C2 下缘线 与 C7 下缘线的夹角
-  var AI_SERVER = 'http://106.53.21.26:2778';
+  // 自动判断：HTTPS页面走CORS代理（解决GitHub Pages混合内容拦截），本地file://直连
+  var AI_RAW = 'http://106.53.21.26:2778';
+  var AI_SERVER = (location.protocol === 'https:') ? 'https://api.codetabs.com/v1/proxy/?quest=' + encodeURIComponent(AI_RAW) : AI_RAW;
   var AI_FN_INDEX = 0;   // identify_and_update
   var AI_TRIGGER_ID = 5;
   var redrawQueued = false;
